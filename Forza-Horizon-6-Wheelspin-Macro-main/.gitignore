@@ -1,0 +1,9 @@
+.vscode/settings.json
+# Ignore compiled executables
+*.exe
+*.txt
+*.zip
+!UpstreamMain.ahk.txt
+LocalState/
+__pycache__/
+*.pyc

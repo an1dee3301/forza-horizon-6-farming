@@ -1,0 +1,248 @@
+{
+  "resolution": [
+    1920,
+    1080
+  ],
+  "language": "English",
+  "screens": [
+    {
+      "name": "collection_grid",
+      "anchors": [
+        {
+          "file": "collection_grid_0.png",
+          "box": [
+            287,
+            101,
+            280,
+            43
+          ]
+        },
+        {
+          "file": "collection_grid_1.png",
+          "box": [
+            581,
+            984,
+            252,
+            43
+          ]
+        }
+      ]
+    },
+    {
+      "name": "mad_mike_mastery",
+      "anchors": [
+        {
+          "file": "mad_mike_mastery_0.png",
+          "box": [
+            307,
+            121,
+            364,
+            49
+          ]
+        },
+        {
+          "file": "mad_mike_mastery_1.png",
+          "box": [
+            810,
+            190,
+            610,
+            86
+          ]
+        }
+      ]
+    },
+    {
+      "name": "purchase_offer_95000",
+      "anchors": [
+        {
+          "file": "purchase_offer_95000_0.png",
+          "box": [
+            627,
+            414,
+            665,
+            72
+          ]
+        },
+        {
+          "file": "purchase_offer_95000_1.png",
+          "box": [
+            720,
+            505,
+            510,
+            38
+          ]
+        }
+      ]
+    },
+    {
+      "name": "purchase_success",
+      "anchors": [
+        {
+          "file": "purchase_success_0.png",
+          "box": [
+            627,
+            468,
+            665,
+            70
+          ]
+        },
+        {
+          "file": "purchase_success_1.png",
+          "box": [
+            781,
+            563,
+            360,
+            24
+          ]
+        }
+      ]
+    },
+    {
+      "name": "autoshow_prompt",
+      "anchors": [
+        {
+          "file": "autoshow_prompt_0.png",
+          "box": [
+            627,
+            397,
+            665,
+            69
+          ]
+        },
+        {
+          "file": "autoshow_prompt_1.png",
+          "box": [
+            680,
+            488,
+            562,
+            67
+          ]
+        }
+      ]
+    },
+    {
+      "name": "sort_selection",
+      "anchors": [
+        {
+          "file": "sort_selection_0.png",
+          "box": [
+            807,
+            329,
+            315,
+            38
+          ]
+        },
+        {
+          "file": "sort_selection_1.png",
+          "box": [
+            912,
+            510,
+            96,
+            28
+          ]
+        }
+      ]
+    },
+    {
+      "name": "garage_grid",
+      "anchors": [
+        {
+          "file": "garage_grid_0.png",
+          "box": [
+            116,
+            97,
+            363,
+            47
+          ]
+        },
+        {
+          "file": "garage_grid_1.png",
+          "box": [
+            369,
+            984,
+            91,
+            45
+          ]
+        }
+      ]
+    },
+    {
+      "name": "remove_confirmation",
+      "anchors": [
+        {
+          "file": "remove_confirmation_0.png",
+          "box": [
+            627,
+            414,
+            665,
+            72
+          ]
+        },
+        {
+          "file": "remove_confirmation_1.png",
+          "box": [
+            710,
+            509,
+            505,
+            28
+          ]
+        }
+      ]
+    },
+    {
+      "name": "collection_detail",
+      "anchors": [
+        {
+          "file": "collection_detail_0.png",
+          "box": [
+            830,
+            310,
+            300,
+            45
+          ]
+        },
+        {
+          "file": "collection_detail_1.png",
+          "box": [
+            1008,
+            540,
+            490,
+            40
+          ]
+        },
+        {
+          "file": "collection_detail_2.png",
+          "box": [
+            1008,
+            580,
+            410,
+            35
+          ]
+        },
+        {
+          "file": "collection_detail_3.png",
+          "box": [
+            335,
+            984,
+            310,
+            46
+          ]
+        }
+      ]
+    },
+    {
+      "name": "car_action",
+      "anchors": [
+        {
+          "file": "car_action_0.png",
+          "box": [
+            627,
+            367,
+            665,
+            72
+          ]
+        }
+      ]
+    }
+  ]
+}

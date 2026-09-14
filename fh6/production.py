@@ -1,0 +1,371 @@
+"""Exact Super Wheelspin targets across farming and crash-resumable car cycles.
+
+Game actions live in the challenge and car modules. Absolute batch counters make
+replaying a checkpoint harmless, including a stop after the last mastery claim.
+"""
+from .budget import whole_number, POINTS_PER_CAR
+from .pipeline import Pipeline
+from .session import Session
+from .batching import funded_cars, starting_balance_allowed
+from .refill_policy import refill_target
+from datetime import datetime
+import time
+
+MODE = 'Earn saved Super Wheelspins'
+
+
+class GoalSession(Session):
+    def start_goal(self, target, reserve=0):
+        reserve = whole_number(reserve, 'SP to keep')
+        if self.data.get('credit_limited') is True:
+            if reserve != self.data.get('reserve_sp', 0):
+                raise ValueError('Resume with the saved SP reserve')
+            if self.data.get('phase') != 'complete':
+                # GUI target is an estimate in this mode, not a completion gate.
+                super().start(MODE, self.data['limit'])
+            return
+        target = whole_number(target, 'Super Wheelspin target')
+        if not 1 <= target <= 10000:
+            raise ValueError('Choose a target from 1 to 10,000 Super Wheelspins')
+        if reserve > 978:
+            raise ValueError('SP to keep must be 978 or less, leaving room for one car')
+        if self.data and self.data.get('phase') != 'complete':
+            if target != self.data['limit'] or reserve != self.data.get('reserve_sp', 0):
+                raise ValueError('Resume with the saved wheelspin target and SP reserve')
+            super().start(MODE, target)
+            return
+        super().start(MODE, target)
+        self.save(phase='inspect_sp', reserve_sp=reserve, batch=None, farm_runs=0, last_sp=None)
+
+
+class Production:
+    def __init__(self, nav, ledger, goal, car_session, challenge, emit=lambda *a: None,
+                 pipeline_factory=Pipeline, credit_budgeter=None, terminal_cleaner=None):
+        self.nav, self.ledger, self.goal, self.cars = nav, ledger, goal, car_session
+        self.challenge, self.emit, self.pipeline_factory = challenge, emit, pipeline_factory
+        self.credit_budgeter = credit_budgeter
+        self.terminal_cleaner = terminal_cleaner
+        self._farm_trial = None
+
+    def boundary(self, name, action):
+        """Measure control-plane work without doing analytics on the input thread."""
+        identifier=f"{self.goal.data.get('id','goal')}:{name}:{time.monotonic_ns()}"
+        detail=dict(id=identifier,name=name,goal_id=self.goal.data.get('id'),
+                    phase=self.goal.data.get('phase'))
+        self.emit('boundary_started',detail)
+        try:
+            result=action()
+        except Exception:
+            self.emit('boundary_completed',dict(detail,success=False))
+            raise
+        self.emit('boundary_completed',dict(detail,success=True))
+        return result
+
+    @property
+    def farm_trial(self):
+        # The trial record is control policy at farm boundaries.  Cache it so
+        # each car-stage checkpoint does not reread the analytics file.
+        if self._farm_trial is None:
+            from .farm_trial import FarmTrial
+            self._farm_trial = FarmTrial(self.goal.path.parent)
+        return self._farm_trial
+
+    @property
+    def credit_limited(self):
+        return self.goal.data.get('credit_limited') is True
+
+    def credit_budget(self):
+        from .credit_limit import CreditLimit
+        if self.credit_budgeter is None:
+            self.credit_budgeter = CreditLimit(self.goal.path.parent/'account_observed.json')
+        proof = self.boundary('credit_check',lambda:
+            self.credit_budgeter.budget(self.nav, self.goal.data, self.cars.data, self.ledger))
+        self.goal.save(credit_budget=proof,
+                       limit=self.goal.data['rewards'] + proof['affordable_purchases'])
+        return proof
+
+    def refresh_inventory(self, *, stay_pause=False):
+        from .inventory_route import refresh_inventory
+        return self.boundary('inventory_sync',lambda:
+            refresh_inventory(self.nav, self.goal.data, stay_pause=stay_pause))
+
+    def intermediate_mega_refill(self, challenge_data):
+        """True after a completed Mega run when another farm run is still required."""
+        g=self.goal.data
+        if (g.get('phase') not in {'inspect_sp','farm'} or not isinstance(challenge_data,dict)
+                or challenge_data.get('phase')!='complete'
+                or challenge_data.get('share_code')!='155439962'
+                or challenge_data.get('id')!=f"{g.get('id')}_{g.get('farm_runs',0)-1}"):
+            return False
+        points=g.get('last_sp')
+        if type(points) is not int or not 0<=points<=999:
+            return False
+        target=refill_target(g['limit']-g['rewards'],g['reserve_sp'])
+        from .refill_control import decision_from_files
+        policy=decision_from_files(points,target,self.goal.path.parent,
+            self.challenge.profile,reserve=g['reserve_sp'],check=self.nav.check)
+        return points<target and policy.get('mode')!='convert'
+
+    def completed_challenge_sp(self, challenge_data):
+        """Reuse the challenge module's already twice-read post-run SP proof."""
+        g=self.goal.data
+        if (not isinstance(challenge_data,dict)
+                or challenge_data.get('phase')!='complete'
+                or challenge_data.get('id')!=f"{g.get('id')}_{g.get('farm_runs',0)-1}"):
+            return None
+        points=challenge_data.get('after_sp')
+        return points if type(points) is int and 0<=points<=999 and points==g.get('last_sp') else None
+
+    def mastery_balance_handoff(self):
+        """True while a verified SP read is handing directly to the farm route.
+
+        ``available_sp`` deliberately finishes on the current car's mastery
+        tree.  Inventory and credit checks cannot safely navigate from that
+        screen, and neither is needed before farming: the inventory read is a
+        reporting correction, while the credit gate runs again immediately
+        before the next unpaid purchase.  Let the farm route leave the tree in
+        its normal setup sequence instead of entering a retry loop here.
+        """
+        last=getattr(self.nav,'last',None)
+        return (self.goal.data.get('phase')=='farm' and
+                getattr(last,'screen',None) in {'mad_mike_mastery','car_mastery'})
+
+    def finish_credit_limit(self, proof):
+        from .credit_limit import PRICE, pending_copy
+        self.nav.check()
+        self.ledger.ready()
+        if (proof['observed_credits'] >= PRICE or proof['purchases_after_observation']
+                or pending_copy(self.cars.data, self.ledger)):
+            raise RuntimeError('Credit exhaustion has not been confirmed; no completion inferred')
+        self.goal.save(phase='garage_cleanup', completed=self.goal.data['rewards'],
+                       end_reason='insufficient_credits', credit_budget=proof,
+                       limit=self.goal.data['rewards'], batch=None, reservation=None)
+        self.emit('status', f"Credit limit reached — {proof['observed_credits']:,} CR remain; removing all Mad Mike cars")
+
+    def cleanup_credit_limit(self):
+        """Remove every Mad Mike after the final affordable conversion."""
+        self.nav.check()
+        if self.terminal_cleaner is not None:
+            removed = self.boundary('terminal_garage_cleanup',
+                                    lambda: self.terminal_cleaner(self.nav, self.emit))
+        else:
+            from .analytics import Tracker
+            from .garage_cleanup import GarageCleanup
+            from .mad_mike_inventory import prepare_filter
+            prepare_filter(self.nav)
+            removed = self.boundary('terminal_garage_cleanup', lambda:
+                GarageCleanup(self.nav, Tracker(), emit=self.emit).run(reset_filter_state=True))
+        self.goal.save(phase='complete', completed=self.goal.data['rewards'])
+        self.emit('status', f'Credit limit reached; garage verified empty after removing {removed:,} Mad Mike cars in the final pass')
+        self.progress()
+
+    def progress(self):
+        images = getattr(self.nav, 'report_images', None)
+        if images is not None:
+            images.request_reward(self.goal.data['id'], self.goal.data.get('rewards', 0))
+        self.emit('progress', dict(self.goal.data))
+
+    def bind(self, cycles=1):
+        data, saved = self.goal.data, self.cars.data
+        if saved['mode'] != 'Full pipeline':
+            raise RuntimeError('Finish or end the saved Buy-only session before starting a wheelspin target')
+        # Rewards already recorded before this goal are never counted toward it.
+        self.goal.save(phase='convert', reservation=None, batch=dict(id=saved['id'], cycles=cycles,
+            rewards_start=saved.get('rewards', 0), bought_start=saved.get('bought', 0),
+            completed_start=saved.get('completed', 0), rewards_seen=0, bought_seen=0))
+
+    def sync(self):
+        batch, saved = self.goal.data.get('batch'), self.cars.data
+        if not batch:
+            return
+        if saved.get('id') != batch['id']:
+            raise RuntimeError('The saved car cycle changed; no purchase or reward count was guessed')
+        rewards = saved.get('rewards', 0) - batch['rewards_start']
+        bought = saved.get('bought', 0) - batch['bought_start']
+        if rewards < batch['rewards_seen'] or bought < batch['bought_seen']:
+            raise RuntimeError('The saved car counters moved backwards')
+        updated = dict(batch, rewards_seen=rewards, bought_seen=bought)
+        total = self.goal.data['rewards']+rewards-batch['rewards_seen']
+        if total > self.goal.data['limit'] and not self.credit_limited:
+            raise RuntimeError('The car batch exceeds the remaining wheelspin target')
+        changes = dict(batch=updated,
+            rewards=self.goal.data['rewards']+rewards-batch['rewards_seen'],
+            bought=self.goal.data['bought']+bought-batch['bought_seen'],
+            completed=self.goal.data['rewards']+rewards-batch['rewards_seen'])
+        if 'observed_sp' in saved:
+            changes.update(last_sp=saved['observed_sp'], sp_observed_at=saved.get('sp_observed_at'))
+        if self.credit_limited and total > self.goal.data['limit']:
+            # An already-paid car still finishes if a previous estimate was lower.
+            changes['limit'] = total
+        self.goal.save(**changes)
+        self.farm_trial.evaluate(self.goal.data)
+        self.progress()
+
+    def car_event(self, kind, value):
+        if kind == 'progress':
+            self.sync()
+        elif kind == 'stage':
+            self.emit('stage', value)
+            self.emit('status', f'Converting SP to saved Super Wheelspins — {value.replace("_", " ")}')
+        else:
+            self.emit(kind, value)
+
+    def convert(self):
+        self.sync()
+        batch = self.goal.data['batch']
+        # Legacy one-car bindings retain their original boundary on upgrade.
+        stop_at = batch['completed_start'] + batch.get('cycles', 1)
+        left = stop_at - self.cars.data['completed']
+        proof = None
+        from .credit_limit import pending_copy
+        inventory_account = getattr(getattr(self.nav, 'account_observer', None), 'gamertag', None)
+        if (left > 0 and isinstance(inventory_account, str) and inventory_account
+                and not pending_copy(self.cars.data, self.ledger)):
+            self.ledger.ready()
+            self.refresh_inventory()
+        pending = self.credit_limited and left > 0 and pending_copy(self.cars.data, self.ledger)
+        try:
+            if pending:
+                # Complete the exact paid copy first. Then continue the same
+                # funded batch after a fresh credit gate instead of discarding
+                # the remaining SP and launching another refill.
+                self.cars.start(self.cars.data['mode'], self.cars.data['limit'])
+                self.pipeline_factory(self.nav, self.ledger, self.cars,
+                                      self.car_event).run(max_cycles=1)
+                self.sync()
+                self.cars.pause()
+                left = stop_at - self.cars.data['completed']
+            if self.credit_limited and left > 0:
+                proof = self.credit_budget()
+                left = min(left, proof['affordable_purchases'])
+            if left > 0:
+                self.cars.start(self.cars.data['mode'], self.cars.data['limit'])
+                self.pipeline_factory(self.nav, self.ledger, self.cars, self.car_event).run(max_cycles=left)
+        finally:
+            self.sync()
+            self.cars.pause()
+        unpaid_zero = proof is not None and not proof['affordable_purchases']
+        if self.cars.data['phase'] not in ({'collection', 'complete', 'buy'} if unpaid_zero else {'collection', 'complete'}):
+            raise RuntimeError('The purchased car has not returned to Car Collection')
+        # An older multi-car run is transferred only at a completed cycle boundary.
+        # The new goal owns the remaining target; the old history is retained.
+        if self.cars.data['phase'] != 'complete':
+            self.cars.save(phase='complete', end_reason='transferred_to_wheelspin_goal')
+        self.goal.save(phase='inspect_sp', batch=None, completed=self.goal.data['rewards'])
+        if unpaid_zero:
+            self.finish_credit_limit(proof)
+
+    def run(self):
+        g = self.goal
+        while g.data['phase'] != 'complete':
+            self.nav.check()
+            self.progress()
+            if g.data['phase'] == 'garage_cleanup':
+                self.cleanup_credit_limit()
+                continue
+            if g.data.get('batch'):
+                self.convert()
+                continue
+            if not self.credit_limited and g.data['rewards'] >= g.data['limit']:
+                self.nav.return_collection()
+                g.save(phase='complete', completed=g.data['rewards'])
+                break
+            if g.data.get('reservation'):
+                self.resume_reservation()
+                continue
+            if self.cars.data and self.cars.data.get('phase') != 'complete':
+                self.bind()
+                continue
+            self.ledger.ready()
+            challenge_data = getattr(self.challenge, 'data', {})
+            farm_in_progress = (g.data['phase'] == 'farm' and isinstance(challenge_data, dict)
+                and challenge_data.get('id') == f"{g.data['id']}_{g.data['farm_runs']}"
+                and challenge_data.get('phase') not in {None, 'complete'})
+            intermediate_refill=self.intermediate_mega_refill(challenge_data)
+            mastery_handoff=self.mastery_balance_handoff()
+            if mastery_handoff:
+                self.emit('log','Verified SP mastery screen handed directly to farm setup; inventory and credit checks are deferred to the next unpaid purchase boundary.')
+            if not farm_in_progress and not intermediate_refill and not mastery_handoff:
+                self.refresh_inventory(stay_pause=True)
+            if self.credit_limited:
+                # Do not navigate away from an already launched/resumable farm.
+                # Its credit gate ran before launch; recheck before the next buy.
+                # A mastery-tree SP handoff also defers safely because no
+                # purchase can occur until convert() runs its fresh gate.
+                if not farm_in_progress and not intermediate_refill and not mastery_handoff:
+                    proof = self.credit_budget()
+                    if not proof['affordable_purchases']:
+                        self.finish_credit_limit(proof)
+                        continue
+            if g.data['phase'] == 'farm':
+                trial=self.farm_trial
+                trial.prepare(g.data,self.challenge)
+                trial.started(f"{g.data['id']}_{g.data['farm_runs']}",self.challenge.profile.share_code)
+                self.emit('stage', 'farm')
+                self.challenge.target_sp=refill_target(g.data['limit']-g.data['rewards'],g.data['reserve_sp'])
+                self.challenge.reserve_sp=g.data['reserve_sp']
+                points = self.challenge.run(f"{g.data['id']}_{g.data['farm_runs']}", return_collection=False)
+                challenge_data=getattr(self.challenge,'data',{})
+                if isinstance(challenge_data,dict) and challenge_data.get('skipped_refill') is True:
+                    if challenge_data.get('launch_attempts',0):
+                        raise RuntimeError('A launched challenge cannot be counted as a skipped refill')
+                    g.save(phase='inspect_sp',last_sp=points,
+                           sp_observed_at=datetime.now().isoformat(timespec='seconds'),final_top_up=True)
+                    continue
+                trial.completed(self.challenge)
+                g.save(phase='inspect_sp', farm_runs=g.data['farm_runs']+1, last_sp=points,
+                       sp_observed_at=datetime.now().isoformat(timespec='seconds'),
+                       final_top_up=getattr(self.challenge,'data',{}).get('exit_reason')=='intentional_target_top_up')
+                continue
+            self.emit('stage', 'inspect_sp')
+            points = self.completed_challenge_sp(challenge_data)
+            if points is None:
+                points = self.boundary('sp_read',self.nav.available_sp)
+            else:
+                self.emit('log',f'Reusing the challenge exit SP proof ({points}); duplicate menu read skipped.')
+            g.save(last_sp=points, sp_observed_at=datetime.now().isoformat(timespec='seconds'))
+            from .refill_policy import mini_cap_batch
+            from .analytics import read
+            cap_batch=(getattr(self.challenge.profile,'share_code',None)=='169055890' and
+                       mini_cap_batch(points,g.data['limit']-g.data['rewards'],g.data['reserve_sp'],
+                                      read(g.path.parent/'analytics.json').get('farms',[])))
+            if cap_batch:
+                self.emit('log','Mini V2 cap avoidance: converting the near-full verified balance before another run would waste at least 21 SP.')
+            mega_convert=False
+            if getattr(self.challenge.profile,'share_code',None)=='155439962':
+                from .refill_control import decision_from_files, describe
+                policy=decision_from_files(points,refill_target(g.data['limit']-g.data['rewards'],g.data['reserve_sp']),
+                                g.path.parent,self.challenge.profile,
+                                reserve=g.data['reserve_sp'],check=self.nav.check)
+                mega_convert=policy.get('mode')=='convert'
+                self.emit('log',describe(policy,self.challenge.profile.name))
+            count = funded_cars(points, g.data['limit']-g.data['rewards'], g.data['reserve_sp'],
+                                allow_partial=starting_balance_allowed(g.data) or bool(g.data.get('final_top_up')) or cap_batch or mega_convert)
+            if not count:
+                self.emit('log', f'Refill toward {refill_target(g.data["limit"]-g.data["rewards"],g.data["reserve_sp"])} SP: verified {points}. No new car batch yet.')
+                g.save(phase='farm')
+                continue
+            self.boundary('farm_to_collection',self.nav.return_collection)
+            self.emit('refill_ready',dict(after_sp=points,cars=count))
+            g.save(final_top_up=False)
+            g.save(reservation=dict(id=datetime.now().strftime('%Y%m%d_%H%M%S_%f'),
+                goal_id=g.data['id'], count=count, points=points, reserve=g.data['reserve_sp'],
+                previous_session=self.cars.data.get('id')))
+            self.emit('log', f'{points} SP verified. Converting {count} Mad Mike cars before the next refill.')
+            self.resume_reservation()
+        self.progress()
+        self.emit('stage', 'complete')
+
+    def resume_reservation(self):
+        reserved = self.goal.data['reservation']
+        saved = self.cars.data
+        if reserved['goal_id'] != self.goal.data['id']:
+            raise RuntimeError('Batch reservation belongs to another mission')
+        if saved.get('funding', {}).get('id') != reserved['id']:
+            if saved.get('id') != reserved.get('previous_session') or (saved and saved.get('phase') != 'complete'):
+                raise RuntimeError('Car session changed during batch reservation')
+            self.cars.start('Full pipeline', reserved['count'], funding=reserved)
+        saved = self.cars.data
+        if saved['phase'] != 'collection' or any(saved[k] for k in ('bought', 'rewards', 'completed')):
+            raise RuntimeError('Unbound reserved batch has unexpected activity; no counters inferred')
+        self.bind(cycles=reserved['count'])

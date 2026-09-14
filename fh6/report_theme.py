@@ -1,0 +1,10 @@
+"""Shared market-terminal palette; presentation only."""
+BG = '#0b1018'
+FG = '#e6edf3'
+GREEN = '#00c087'
+RED = '#f6465d'
+AMBER = '#f0b90b'
+CYAN = '#5ab8d4'
+MUTED = '#8795a7'
+GRID = '#253141'
+BORDER = '#364458'

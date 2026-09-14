@@ -1,0 +1,18 @@
+{
+  "interior_from_label": [
+    598,
+    1,
+    16,
+    16
+  ],
+  "on": [
+    "favorites_on_focused_interior.png",
+    "favorites_on_unfocused_interior.png"
+  ],
+  "off": [
+    "favorites_off_focused_interior.png",
+    "favorites_off_unfocused_interior.png"
+  ],
+  "max_error": 12,
+  "min_gap": 15
+}

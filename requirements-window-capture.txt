@@ -1,0 +1,2 @@
+# OpenCV and numpy are already supplied by requirements-gui.txt.
+windows-capture==2.0.1

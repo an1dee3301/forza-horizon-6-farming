@@ -1,0 +1,349 @@
+{
+  "summary": {
+    "final_super_wheelspins": 1680,
+    "final_wheelspins": 219,
+    "verified_mastery_rewards": 1915,
+    "cars_bought": 1915,
+    "farm_runs": 151,
+    "sp_consumed": 40215,
+    "retained_sp": 40134,
+    "gross_mazda_spend": 181925000,
+    "final_credits": 87720,
+    "final_sp": 39,
+    "level": 387,
+    "prestige": 5,
+    "wall_hours": 87.04194444444444,
+    "active_hours": 73.97450472222212,
+    "sw_per_wall_hour": 22.000887184020478,
+    "sw_per_active_hour": 25.88729734914642,
+    "retries": 1820,
+    "crashes": 22,
+    "recovery_hours": 7.563560833333346,
+    "recorded_removals": 1288,
+    "final_pass_removals": 78,
+    "remaining_mad_mikes": 0,
+    "latest20": {
+      "n": 20,
+      "p50": 46.73450000002049,
+      "p90": 57.51500000001397,
+      "p99": 57.73499999998603
+    },
+    "latest20_fpy": 100.0
+  },
+  "phases": [
+    {
+      "phase": "Initial 0\u2192517",
+      "rewards": 517,
+      "farm_runs": 35,
+      "cycle_p50_s": 14528.345999999307,
+      "cycle_p90_s": 29542.014999994484,
+      "cycle_p99_s": 36457.793679998635,
+      "active_h": 19.25608138888889,
+      "farm_active_h": 10.392586388888898,
+      "retained_sp": 11600,
+      "retries": 76,
+      "crashes": 2,
+      "recovery_h": 0.23406694444446152
+    },
+    {
+      "phase": "Restart from 333",
+      "rewards": 1398,
+      "farm_runs": 116,
+      "cycle_p50_s": 33104.64749999024,
+      "cycle_p90_s": 73828.25080000672,
+      "cycle_p99_s": 115391.08817,
+      "active_h": 54.718423333333234,
+      "farm_active_h": 25.547551666666767,
+      "retained_sp": 28534,
+      "retries": 1744,
+      "crashes": 20,
+      "recovery_h": 7.3294938888888845
+    }
+  ],
+  "stage_percentiles": [
+    {
+      "phase": "Initial 0\u2192517",
+      "stage": "collection",
+      "n": 517,
+      "p50_s": 121.47100000307546,
+      "p90_s": 239.94000000151573,
+      "p99_s": 303.5340000060678,
+      "mean_s": 0.47802127659589017
+    },
+    {
+      "phase": "Initial 0\u2192517",
+      "stage": "buy",
+      "n": 517,
+      "p50_s": 1788.9130000016885,
+      "p90_s": 3421.935400005241,
+      "p99_s": 8639.083600001368,
+      "mean_s": 6.956820116054059
+    },
+    {
+      "phase": "Initial 0\u2192517",
+      "stage": "bought",
+      "n": 517,
+      "p50_s": 327.89400000084424,
+      "p90_s": 610.5449999975099,
+      "p99_s": 686.7839999986439,
+      "mean_s": 1.2093249516442228
+    },
+    {
+      "phase": "Initial 0\u2192517",
+      "stage": "choose",
+      "n": 517,
+      "p50_s": 6224.0289999969245,
+      "p90_s": 13942.560399998485,
+      "p99_s": 18149.00360000165,
+      "mean_s": 25.328595744680385
+    },
+    {
+      "phase": "Initial 0\u2192517",
+      "stage": "open_mastery",
+      "n": 512,
+      "p50_s": 848.1279999986291,
+      "p90_s": 1660.1543999985033,
+      "p99_s": 6760.242769992926,
+      "mean_s": 3.4788496093748336
+    },
+    {
+      "phase": "Initial 0\u2192517",
+      "stage": "mastery",
+      "n": 517,
+      "p50_s": 2169.125,
+      "p90_s": 3989.2409999990196,
+      "p99_s": 4583.185039998633,
+      "mean_s": 8.401481624759358
+    },
+    {
+      "phase": "Initial 0\u2192517",
+      "stage": "return",
+      "n": 517,
+      "p50_s": 2970.2119999983115,
+      "p90_s": 5783.675999997516,
+      "p99_s": 7690.0280800011,
+      "mean_s": 11.765911025144044
+    },
+    {
+      "phase": "Restart from 333",
+      "stage": "collection",
+      "n": 1398,
+      "p50_s": 44.036999996271334,
+      "p90_s": 157.25,
+      "p99_s": 950.8080299671332,
+      "mean_s": 0.14778540772496232
+    },
+    {
+      "phase": "Restart from 333",
+      "stage": "buy",
+      "n": 1398,
+      "p50_s": 2817.6690000120434,
+      "p90_s": 7037.251999978325,
+      "p99_s": 20153.809409967133,
+      "mean_s": 5.229334048640955
+    },
+    {
+      "phase": "Restart from 333",
+      "stage": "bought",
+      "n": 1398,
+      "p50_s": 688.5149999902351,
+      "p90_s": 1415.25,
+      "p99_s": 1685.7119999909773,
+      "mean_s": 0.9570064377686284
+    },
+    {
+      "phase": "Restart from 333",
+      "stage": "choose",
+      "n": 1398,
+      "p50_s": 14788.743000004557,
+      "p90_s": 36521.00759994847,
+      "p99_s": 47402.00327,
+      "mean_s": 23.449738912732236
+    },
+    {
+      "phase": "Restart from 333",
+      "stage": "open_mastery",
+      "n": 1394,
+      "p50_s": 2396.2859999962675,
+      "p90_s": 4761.448500025662,
+      "p99_s": 20614.442099992608,
+      "mean_s": 4.021619799138901
+    },
+    {
+      "phase": "Restart from 333",
+      "stage": "mastery",
+      "n": 1398,
+      "p50_s": 5111.0879999834,
+      "p90_s": 14407.883600010831,
+      "p99_s": 16154.048450028356,
+      "mean_s": 8.353467811159142
+    },
+    {
+      "phase": "Restart from 333",
+      "stage": "return",
+      "n": 1398,
+      "p50_s": 6793.580999987957,
+      "p90_s": 16196.75,
+      "p99_s": 32157.340769900115,
+      "mean_s": 10.465493562231412
+    }
+  ],
+  "farm_profiles": [
+    {
+      "farm_group": "Mega Farm V6 \u2014 natural completion",
+      "runs": 31,
+      "retained_sp": 10936,
+      "active_h": 8.842688333333419,
+      "retained_sp_h": 1236.7279709243658,
+      "cars_supported_h": 58.89180813925551,
+      "drive_p50_s": 14675.872,
+      "drive_p90_s": 25685.8
+    },
+    {
+      "farm_group": "Mega Farm V6 \u2014 intentional top up",
+      "runs": 25,
+      "retained_sp": 4876,
+      "active_h": 4.008294999999999,
+      "retained_sp_h": 1216.4773301366297,
+      "cars_supported_h": 57.92749191126808,
+      "drive_p50_s": 7802.509,
+      "drive_p90_s": 13210.9596
+    },
+    {
+      "farm_group": "Untagged \u2014 natural completion",
+      "runs": 1,
+      "retained_sp": 373,
+      "active_h": 0.31094194444444534,
+      "retained_sp_h": 1199.5808435122276,
+      "cars_supported_h": 57.122897310106076,
+      "drive_p50_s": 0.0,
+      "drive_p90_s": 0.0
+    },
+    {
+      "farm_group": "Untagged \u2014 intentional top up",
+      "runs": 1,
+      "retained_sp": 242,
+      "active_h": 0.2135024999999991,
+      "retained_sp_h": 1133.4761888034147,
+      "cars_supported_h": 53.97505660968642,
+      "drive_p50_s": 0.0,
+      "drive_p90_s": 0.0
+    },
+    {
+      "farm_group": "Untagged \u2014 legacy",
+      "runs": 11,
+      "retained_sp": 3718,
+      "active_h": 3.288376388888872,
+      "retained_sp_h": 1130.649159434056,
+      "cars_supported_h": 53.840436163526476,
+      "drive_p50_s": null,
+      "drive_p90_s": null
+    },
+    {
+      "farm_group": "Initial farm telemetry",
+      "runs": 35,
+      "retained_sp": 11600,
+      "active_h": 10.392586388888898,
+      "retained_sp_h": 1116.180281397708,
+      "cars_supported_h": 53.151441971319436,
+      "drive_p50_s": null,
+      "drive_p90_s": null
+    },
+    {
+      "farm_group": "Mini Farm V2 \u2014 natural completion",
+      "runs": 29,
+      "retained_sp": 3712,
+      "active_h": 3.462751944444446,
+      "retained_sp_h": 1071.9797604779174,
+      "cars_supported_h": 51.04665526085321,
+      "drive_p50_s": 4479.015,
+      "drive_p90_s": 7770.0504
+    },
+    {
+      "farm_group": "Mega Farm V6 \u2014 interrupted",
+      "runs": 8,
+      "retained_sp": 2893,
+      "active_h": 2.784135555555557,
+      "retained_sp_h": 1039.1017040198387,
+      "cars_supported_h": 49.481033524754224,
+      "drive_p50_s": 3669.0359999999996,
+      "drive_p90_s": 5503.752
+    },
+    {
+      "farm_group": "Untagged \u2014 capped",
+      "runs": 5,
+      "retained_sp": 1110,
+      "active_h": 1.4963497222222375,
+      "retained_sp_h": 741.8051966832544,
+      "cars_supported_h": 35.32405698491688,
+      "drive_p50_s": null,
+      "drive_p90_s": null
+    },
+    {
+      "farm_group": "Mini Farm V2 \u2014 interrupted",
+      "runs": 5,
+      "retained_sp": 674,
+      "active_h": 1.1405102777777938,
+      "retained_sp_h": 590.9635477492083,
+      "cars_supported_h": 28.14112132139087,
+      "drive_p50_s": 896.0159999999998,
+      "drive_p90_s": 1194.911
+    }
+  ],
+  "classified_failures": [
+    {
+      "cause": "OCR_fail",
+      "events": 341,
+      "recovery_minutes": 97.17068331666658,
+      "mean_cost_s": 17.097480935483855
+    },
+    {
+      "cause": "mastery_detection",
+      "events": 71,
+      "recovery_minutes": 21.297060300000005,
+      "mean_cost_s": 17.99751574647888
+    },
+    {
+      "cause": "purchase_fail",
+      "events": 27,
+      "recovery_minutes": 20.406115866666667,
+      "mean_cost_s": 45.346924148148155
+    },
+    {
+      "cause": "game_crash",
+      "events": 2,
+      "recovery_minutes": 6.794302366666667,
+      "mean_cost_s": 203.829071
+    },
+    {
+      "cause": "choose_timeout",
+      "events": 7,
+      "recovery_minutes": 5.2236667,
+      "mean_cost_s": 44.774286000000004
+    },
+    {
+      "cause": "focus_lost",
+      "events": 30,
+      "recovery_minutes": 5.135495916666668,
+      "mean_cost_s": 10.270991833333335
+    },
+    {
+      "cause": "unexpected_screen",
+      "events": 9,
+      "recovery_minutes": 3.761210216666667,
+      "mean_cost_s": 25.074734777777778
+    },
+    {
+      "cause": "other",
+      "events": 5,
+      "recovery_minutes": 2.2946120166666666,
+      "mean_cost_s": 27.535344199999997
+    },
+    {
+      "cause": "return_timeout",
+      "events": 9,
+      "recovery_minutes": 1.878074816666667,
+      "mean_cost_s": 12.52049877777778
+    }
+  ]
+}
