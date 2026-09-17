@@ -107,10 +107,22 @@ The operation contains three measured cohorts. The README keeps only the compari
 
 Phase 2 was the strongest conversion and recovery cohort: versus Phase 1, P50 improved **3.68%**, P90 **6.91%**, P99 **29.30%**, and active reward throughput **12.19%**. SP farming fell **7.22%**, leaving farm output as the main remaining bottleneck.
 
-![Three-phase speed and throughput](docs/full-operation-report/charts/08_three_phase_comparison.png)
+### Speed
+
+![Cycle percentiles across all phases](docs/full-operation-report/charts/18_three_phase_cycle_percentiles.png)
 
 ![Cycle-duration distributions](docs/full-operation-report/charts/14_three_phase_cycle_ecdf.png)
 
 ![Stage P50 across all cohorts](docs/full-operation-report/charts/16_three_phase_stage_p50.png)
+
+### Throughput
+
+![Active reward and SP farm throughput](docs/full-operation-report/charts/19_three_phase_throughput.png)
+
+### Reliability and workload
+
+![Normalized reliability and first-pass yield](docs/full-operation-report/charts/20_three_phase_reliability.png)
+
+![Cars, farm runs, and recorded hours](docs/full-operation-report/charts/21_three_phase_workload.png)
 
 Across all three phases: **3,252 cars**, **3,252 verified rewards**, **263 farm runs**, and **308.94M CR** spent on Mazdas. The final verified Phase 2 state was **2,506 saved SW**, **230 WS**, **999 SP**, **42,170 CR**, and **zero Mad Mikes**.

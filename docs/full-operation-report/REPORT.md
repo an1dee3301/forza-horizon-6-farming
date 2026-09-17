@@ -40,6 +40,14 @@ Phase 2 delivered the best conversion median, tail latency, active reward throug
 
 ![Three-phase stage P50](charts/16_three_phase_stage_p50.png)
 
+![Three-phase cycle percentiles](charts/18_three_phase_cycle_percentiles.png)
+
+![Three-phase throughput](charts/19_three_phase_throughput.png)
+
+![Three-phase reliability](charts/20_three_phase_reliability.png)
+
+![Three-phase workload](charts/21_three_phase_workload.png)
+
 ## Changes that mattered
 
 - Pre-Phase 1 established the complete purchase, newest-car, mastery, return, and cleanup loop.
