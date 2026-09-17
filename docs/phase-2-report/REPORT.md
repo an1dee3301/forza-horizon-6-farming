@@ -70,21 +70,29 @@ The broad mission counters recorded **297 retries** and **7 crashes**. Cause-lev
 
 ## Phase 1 comparison
 
-The published Phase 1 production cohort is used for conversion percentiles; full-operation totals are used for overall rates and reliability.
+The comparison uses the 1,398-car Phase 1 production cohort and the 1,281-car Phase 2 cohort. Rates and event counts use the same cohort scope instead of mixing Phase 1 full-operation totals with its later production cohort.
 
-| Metric | Phase 1 | Phase 2 | Change |
+| Metric | Phase 1 | Phase 2 | Phase 2 change |
 |---|---:|---:|---:|
-| Rewards | 1915 | 1281 | — |
-| Cycle P50 (s) | 47.37 | 45.44 | -4.1% |
-| Cycle P90 (s) | 58.69 | 54.33 | -7.4% |
-| Cycle P99 (s) | 83.46 | 58.96 | -29.4% |
-| SW / active hour | 25.89 | 27.65 | +6.8% |
-| SW / wall hour | 22.00 | 22.16 | +0.7% |
-| Crashes / 1,000 cars | 11.49 | 5.46 | -52.4% |
-| Retries / 1,000 cars | 950.39 | 231.85 | -75.6% |
+| Cycle P50 | 47.37s | 45.44s | **4.07% faster** |
+| Cycle P90 | 58.69s | 54.33s | **7.44% faster** |
+| Cycle P99 | 83.46s | 58.96s | **29.36% faster** |
+| Active throughput | 25.55 SW/h | 27.65 SW/h | **8.21% higher** |
+| Farm retained rate | 1,116.9 SP/h | 1,044.8 SP/h | **6.45% lower** |
+| Farm capacity | 53.19 cars/h | 49.75 cars/h | **6.45% lower** |
+| Conversion capacity | 64.48 cars/h | 63.31 cars/h | **1.81% lower** |
+| Crashes / 1,000 cars | 14.31 | 5.46 | **61.80% fewer** |
+| Retries / 1,000 cars | 1,247.50 | 231.85 | **81.41% fewer** |
 
+The bootstrap 95% improvement intervals are **3.31–4.83%** for P50, **6.05–9.03%** for P90, and **22.07–42.53%** for P99, using 5,000 deterministic nonparametric resamples. Phase 2 improved conversion and reliability, while farm throughput regressed and remains the next optimization target.
 
-Phase 2 improved conversion P50 by **4.1%**, P90 by **7.4%**, and P99 by **29.4%**. Crash incidence per 1,000 cars fell **52.4%** and retry incidence fell **75.6%**. Farm throughput did not improve phase-wide and remains the clearest next target.
+![Cycle ECDF](charts/07_cycle_ecdf.png)
+
+![Cycle improvement confidence intervals](charts/08_cycle_improvement_ci.png)
+
+![Stage P50 comparison](charts/09_stage_p50_comparison.png)
+
+![Capacity comparison](charts/10_capacity_comparison.png)
 
 ## Finance and cleanup
 
@@ -110,6 +118,9 @@ Exact: purchases, verified mastery rewards, cycle rows, farm pre/post SP, final 
 ## Inspectable exports
 
 - [Reviewed snapshot](reviewed_snapshot.json)
+- [Detailed Phase 1 vs Phase 2 metrics](data/comparison_detailed.csv)
+- [Stage comparison](data/stage_comparison.csv)
+- [Machine-readable comparison analysis](comparison_analysis.json)
 - [Stage percentiles](data/stage_percentiles.csv)
 - [Farm profiles](data/farm_profiles.csv)
 - [Classified failures](data/classified_failures.csv)

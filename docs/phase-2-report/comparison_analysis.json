@@ -1,0 +1,253 @@
+{
+  "phase_1_cycles": 1398,
+  "phase_2_cycles": 1281,
+  "phase_1_farms": 116,
+  "phase_2_farms": 104,
+  "metrics": [
+    {
+      "metric": "Cycle P50",
+      "unit": "seconds",
+      "phase_1": 47.367499999993015,
+      "phase_2": 45.437999999994645,
+      "improvement_percent": 4.0734680952101225,
+      "bootstrap_95_low": 3.3112295266988028,
+      "bootstrap_95_high": 4.832635543073902,
+      "scope": "1,398 vs 1,281 completed cars"
+    },
+    {
+      "metric": "Cycle P90",
+      "unit": "seconds",
+      "phase_1": 58.6917999999976,
+      "phase_2": 54.328000000008615,
+      "improvement_percent": 7.435110185731504,
+      "bootstrap_95_low": 6.05343052144906,
+      "bootstrap_95_high": 9.02680695960117,
+      "scope": "1,398 vs 1,281 completed cars"
+    },
+    {
+      "metric": "Cycle P99",
+      "unit": "seconds",
+      "phase_1": 83.46317000000205,
+      "phase_2": 58.95900000000257,
+      "improvement_percent": 29.35926109683934,
+      "bootstrap_95_low": 22.07087123283516,
+      "bootstrap_95_high": 42.53063495144106,
+      "scope": "1,398 vs 1,281 completed cars"
+    },
+    {
+      "metric": "Farm retained rate",
+      "unit": "SP/h",
+      "phase_1": 1116.8976335697093,
+      "phase_2": 1044.8471788259383,
+      "improvement_percent": -6.450945241372841,
+      "bootstrap_95_low": "",
+      "bootstrap_95_high": "",
+      "scope": "116 vs 104 farm runs"
+    },
+    {
+      "metric": "Farm capacity",
+      "unit": "cars/h",
+      "phase_1": 53.18560159855759,
+      "phase_2": 49.75462756313992,
+      "improvement_percent": -6.450945241372841,
+      "bootstrap_95_low": "",
+      "bootstrap_95_high": "",
+      "scope": "retained SP/h \u00f7 21"
+    },
+    {
+      "metric": "Conversion capacity",
+      "unit": "cars/h",
+      "phase_1": 64.48339483394834,
+      "phase_2": 63.31450529055591,
+      "improvement_percent": -1.8126985193668066,
+      "bootstrap_95_low": "",
+      "bootstrap_95_high": "",
+      "scope": "recorded conversion time"
+    },
+    {
+      "metric": "SW active throughput",
+      "unit": "SW/h",
+      "phase_1": 25.55,
+      "phase_2": 27.647230238952442,
+      "improvement_percent": 8.208337530146537,
+      "bootstrap_95_low": "",
+      "bootstrap_95_high": "",
+      "scope": "mission active time"
+    },
+    {
+      "metric": "Crash incidence",
+      "unit": "per 1,000 cars",
+      "phase_1": 14.30615164520744,
+      "phase_2": 5.46448087431694,
+      "improvement_percent": 61.803278688524586,
+      "bootstrap_95_low": "",
+      "bootstrap_95_high": "",
+      "scope": "broad mission counter; positive is reduction"
+    },
+    {
+      "metric": "Retry incidence",
+      "unit": "per 1,000 cars",
+      "phase_1": 1247.4964234620886,
+      "phase_2": 231.85011709601875,
+      "improvement_percent": 81.41476698966547,
+      "bootstrap_95_low": "",
+      "bootstrap_95_high": "",
+      "scope": "broad mission counter; positive is reduction"
+    }
+  ],
+  "stage_comparison": [
+    {
+      "stage": "collection",
+      "percentile": "P50",
+      "phase_1_seconds": 0.06300000000919681,
+      "phase_2_seconds": 0.062000000005355105,
+      "improvement_percent": 1.5873015931678167
+    },
+    {
+      "stage": "collection",
+      "percentile": "P90",
+      "phase_1_seconds": 0.125,
+      "phase_2_seconds": 0.125,
+      "improvement_percent": 0.0
+    },
+    {
+      "stage": "collection",
+      "percentile": "P99",
+      "phase_1_seconds": 0.6870299999776762,
+      "phase_2_seconds": 0.7652000000060071,
+      "improvement_percent": -11.377960210015697
+    },
+    {
+      "stage": "buy",
+      "percentile": "P50",
+      "phase_1_seconds": 4.0310000000172295,
+      "phase_2_seconds": 3.7969999999913853,
+      "improvement_percent": 5.805011164099331
+    },
+    {
+      "stage": "buy",
+      "percentile": "P90",
+      "phase_1_seconds": 5.5939999999827705,
+      "phase_2_seconds": 4.436999999990803,
+      "improvement_percent": 20.68287450832197
+    },
+    {
+      "stage": "buy",
+      "percentile": "P99",
+      "phase_1_seconds": 14.563409999976864,
+      "phase_2_seconds": 13.255999999996861,
+      "improvement_percent": 8.977361757871815
+    },
+    {
+      "stage": "bought",
+      "percentile": "P50",
+      "phase_1_seconds": 0.9849999999860302,
+      "phase_2_seconds": 0.860000000015134,
+      "improvement_percent": 12.690355327174517
+    },
+    {
+      "stage": "bought",
+      "percentile": "P90",
+      "phase_1_seconds": 1.125,
+      "phase_2_seconds": 1.0469999999913853,
+      "improvement_percent": 6.933333334099087
+    },
+    {
+      "stage": "bought",
+      "percentile": "P99",
+      "phase_1_seconds": 1.2179999999934807,
+      "phase_2_seconds": 1.1280000000027945,
+      "improvement_percent": 7.389162560851226
+    },
+    {
+      "stage": "choose",
+      "percentile": "P50",
+      "phase_1_seconds": 21.15700000000652,
+      "phase_2_seconds": 20.875,
+      "improvement_percent": 1.3328921870134347
+    },
+    {
+      "stage": "choose",
+      "percentile": "P90",
+      "phase_1_seconds": 29.04059999997844,
+      "phase_2_seconds": 25.921999999991385,
+      "improvement_percent": 10.738758841034173
+    },
+    {
+      "stage": "choose",
+      "percentile": "P99",
+      "phase_1_seconds": 34.2532699999999,
+      "phase_2_seconds": 32.48140000001295,
+      "improvement_percent": 5.172849190710725
+    },
+    {
+      "stage": "open_mastery",
+      "percentile": "P50",
+      "phase_1_seconds": 3.437999999994645,
+      "phase_2_seconds": 3.1719999999913853,
+      "improvement_percent": 7.737056428262767
+    },
+    {
+      "stage": "open_mastery",
+      "percentile": "P90",
+      "phase_1_seconds": 3.807499999989523,
+      "phase_2_seconds": 3.546999999997206,
+      "improvement_percent": 6.841759684649613
+    },
+    {
+      "stage": "open_mastery",
+      "percentile": "P99",
+      "phase_1_seconds": 14.940099999994562,
+      "phase_2_seconds": 14.494339999998047,
+      "improvement_percent": 2.983648034462132
+    },
+    {
+      "stage": "mastery",
+      "percentile": "P50",
+      "phase_1_seconds": 7.311999999976251,
+      "phase_2_seconds": 6.85899999999674,
+      "improvement_percent": 6.195295404553915
+    },
+    {
+      "stage": "mastery",
+      "percentile": "P90",
+      "phase_1_seconds": 11.462600000001839,
+      "phase_2_seconds": 7.10999999998603,
+      "improvement_percent": 37.972187810925185
+    },
+    {
+      "stage": "mastery",
+      "percentile": "P99",
+      "phase_1_seconds": 11.672450000020035,
+      "phase_2_seconds": 7.269000000000234,
+      "improvement_percent": 37.725156244081084
+    },
+    {
+      "stage": "return",
+      "percentile": "P50",
+      "phase_1_seconds": 9.71899999998277,
+      "phase_2_seconds": 9.312999999994645,
+      "improvement_percent": 4.177384504463889
+    },
+    {
+      "stage": "return",
+      "percentile": "P90",
+      "phase_1_seconds": 12.875,
+      "phase_2_seconds": 9.89000000001397,
+      "improvement_percent": 23.18446601930897
+    },
+    {
+      "stage": "return",
+      "percentile": "P99",
+      "phase_1_seconds": 23.335769999936364,
+      "phase_2_seconds": 10.397200000006707,
+      "improvement_percent": 55.445224220006196
+    }
+  ],
+  "interpretation": {
+    "conversion": "Phase 2 is faster across P50/P90/P99; the largest gain is tail control.",
+    "farm": "Phase 2 retained SP/hour is lower, so farming remains the bottleneck.",
+    "reliability": "Normalized crash and retry incidence improved substantially.",
+    "decision": "Keep Phase 2 conversion/recovery changes; optimize farm setup, useful drive yield and refill boundaries next."
+  }
+}
