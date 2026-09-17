@@ -1,350 +1,687 @@
 {
-  "summary": {
-    "final_super_wheelspins": 1680,
-    "final_wheelspins": 219,
-    "verified_mastery_rewards": 1915,
-    "cars_bought": 1915,
-    "farm_runs": 151,
-    "sp_consumed": 40215,
-    "retained_sp": 40134,
-    "gross_mazda_spend": 181925000,
-    "final_credits": 87720,
-    "final_sp": 39,
-    "level": 387,
-    "prestige": 5,
-    "wall_hours": 87.04194444444444,
-    "active_hours": 73.97450472222212,
-    "sw_per_wall_hour": 22.000887184020478,
-    "sw_per_active_hour": 25.88729734914642,
-    "retries": 1820,
-    "crashes": 22,
-    "recovery_hours": 7.563560833333346,
-    "recorded_removals": 1288,
-    "final_pass_removals": 78,
-    "remaining_mad_mikes": 0,
-    "latest20": {
-      "n": 20,
-      "p50": 46.73450000002049,
-      "p90": 57.51500000001397,
-      "p99": 57.73499999998603
-    },
-    "latest20_fpy": 100.0
+  "as_of": "2026-09-18T00:11:44+09:00",
+  "combined_summary": {
+    "verified_mastery_rewards": 3252,
+    "cars_bought_and_processed": 3252,
+    "farm_runs": 263,
+    "gross_mazda_spend": 308940000,
+    "recorded_active_hours": 120.62004388888884,
+    "recorded_farm_hours": 63.636778888889,
+    "recorded_retained_sp": 68834,
+    "broad_retries": 2126,
+    "crashes": 29,
+    "final_super_wheelspins": 2506,
+    "final_wheelspins": 230,
+    "final_credits": 42170,
+    "final_sp": 999,
+    "final_mad_mikes": 0
   },
-  "phases": [
-    {
-      "phase": "Initial 0→517",
-      "rewards": 517,
-      "farm_runs": 35,
-      "cycle_p50_s": 56.09399999999732,
-      "cycle_p90_s": 63.63099999999395,
-      "cycle_p99_s": 72.3536800000013,
-      "active_h": 19.25608138888889,
-      "farm_active_h": 10.392586388888898,
-      "retained_sp": 11600,
-      "retries": 76,
-      "crashes": 2,
-      "recovery_h": 0.23406694444446152
+  "pre_phase_1_and_phase_1": {
+    "summary": {
+      "final_super_wheelspins": 1680,
+      "final_wheelspins": 219,
+      "verified_mastery_rewards": 1915,
+      "cars_bought": 1915,
+      "farm_runs": 151,
+      "sp_consumed": 40215,
+      "retained_sp": 40134,
+      "gross_mazda_spend": 181925000,
+      "final_credits": 87720,
+      "final_sp": 39,
+      "level": 387,
+      "prestige": 5,
+      "wall_hours": 87.04194444444444,
+      "active_hours": 73.97450472222212,
+      "sw_per_wall_hour": 22.000887184020478,
+      "sw_per_active_hour": 25.88729734914642,
+      "retries": 1820,
+      "crashes": 22,
+      "recovery_hours": 7.563560833333346,
+      "recorded_removals": 1288,
+      "final_pass_removals": 78,
+      "remaining_mad_mikes": 0,
+      "latest20": {
+        "n": 20,
+        "p50": 46.73450000002049,
+        "p90": 57.51500000001397,
+        "p99": 57.73499999998603
+      },
+      "latest20_fpy": 100.0
     },
-    {
-      "phase": "Restart from 333",
-      "rewards": 1398,
-      "farm_runs": 116,
-      "cycle_p50_s": 47.367499999993015,
-      "cycle_p90_s": 58.6917999999976,
-      "cycle_p99_s": 83.46317000000205,
-      "active_h": 54.718423333333234,
-      "farm_active_h": 25.547551666666767,
-      "retained_sp": 28534,
-      "retries": 1744,
-      "crashes": 20,
-      "recovery_h": 7.3294938888888845
+    "phases": [
+      {
+        "phase": "Initial 0\u2192517",
+        "rewards": 517,
+        "farm_runs": 35,
+        "cycle_p50_s": 56.09399999999732,
+        "cycle_p90_s": 63.63099999999395,
+        "cycle_p99_s": 72.3536800000013,
+        "active_h": 19.25608138888889,
+        "farm_active_h": 10.392586388888898,
+        "retained_sp": 11600,
+        "retries": 76,
+        "crashes": 2,
+        "recovery_h": 0.23406694444446152
+      },
+      {
+        "phase": "Restart from 333",
+        "rewards": 1398,
+        "farm_runs": 116,
+        "cycle_p50_s": 47.367499999993015,
+        "cycle_p90_s": 58.6917999999976,
+        "cycle_p99_s": 83.46317000000205,
+        "active_h": 54.718423333333234,
+        "farm_active_h": 25.547551666666767,
+        "retained_sp": 28534,
+        "retries": 1744,
+        "crashes": 20,
+        "recovery_h": 7.3294938888888845
+      }
+    ],
+    "stage_percentiles": [
+      {
+        "phase": "Initial 0\u2192517",
+        "stage": "collection",
+        "n": 517,
+        "p50_s": 0.46900000001187436,
+        "p90_s": 0.5160000000032596,
+        "p99_s": 0.5940000000118744,
+        "mean_s": 0.47802127659589017
+      },
+      {
+        "phase": "Initial 0\u2192517",
+        "stage": "buy",
+        "n": 517,
+        "p50_s": 6.907000000006519,
+        "p90_s": 7.359400000001187,
+        "p99_s": 17.023600000002187,
+        "mean_s": 6.956820116054059
+      },
+      {
+        "phase": "Initial 0\u2192517",
+        "stage": "bought",
+        "n": 517,
+        "p50_s": 1.2660000000032596,
+        "p90_s": 1.312999999994645,
+        "p99_s": 1.344000000009546,
+        "mean_s": 1.2093249516442228
+      },
+      {
+        "phase": "Initial 0\u2192517",
+        "stage": "choose",
+        "n": 517,
+        "p50_s": 24.030999999988126,
+        "p90_s": 29.984399999998278,
+        "p99_s": 35.84359999999054,
+        "mean_s": 25.328595744680385
+      },
+      {
+        "phase": "Initial 0\u2192517",
+        "stage": "open_mastery",
+        "n": 512,
+        "p50_s": 3.312999999994645,
+        "p90_s": 3.6233999999996747,
+        "p99_s": 13.442769999980227,
+        "mean_s": 3.4788496093748336
+      },
+      {
+        "phase": "Initial 0\u2192517",
+        "stage": "mastery",
+        "n": 517,
+        "p50_s": 8.375,
+        "p90_s": 8.584999999991851,
+        "p99_s": 8.995039999999571,
+        "mean_s": 8.401481624759358
+      },
+      {
+        "phase": "Initial 0\u2192517",
+        "stage": "return",
+        "n": 517,
+        "p50_s": 11.46799999999348,
+        "p90_s": 12.444000000000234,
+        "p99_s": 16.568080000030996,
+        "mean_s": 11.765911025144044
+      },
+      {
+        "phase": "Restart from 333",
+        "stage": "collection",
+        "n": 1398,
+        "p50_s": 0.06300000000919681,
+        "p90_s": 0.125,
+        "p99_s": 0.6870299999776762,
+        "mean_s": 0.14778540772496232
+      },
+      {
+        "phase": "Restart from 333",
+        "stage": "buy",
+        "n": 1398,
+        "p50_s": 4.0310000000172295,
+        "p90_s": 5.5939999999827705,
+        "p99_s": 14.563409999976864,
+        "mean_s": 5.229334048640955
+      },
+      {
+        "phase": "Restart from 333",
+        "stage": "bought",
+        "n": 1398,
+        "p50_s": 0.9849999999860302,
+        "p90_s": 1.125,
+        "p99_s": 1.2179999999934807,
+        "mean_s": 0.9570064377686284
+      },
+      {
+        "phase": "Restart from 333",
+        "stage": "choose",
+        "n": 1398,
+        "p50_s": 21.15700000000652,
+        "p90_s": 29.04059999997844,
+        "p99_s": 34.2532699999999,
+        "mean_s": 23.449738912732236
+      },
+      {
+        "phase": "Restart from 333",
+        "stage": "open_mastery",
+        "n": 1394,
+        "p50_s": 3.437999999994645,
+        "p90_s": 3.807499999989523,
+        "p99_s": 14.940099999994562,
+        "mean_s": 4.021619799138901
+      },
+      {
+        "phase": "Restart from 333",
+        "stage": "mastery",
+        "n": 1398,
+        "p50_s": 7.311999999976251,
+        "p90_s": 11.462600000001839,
+        "p99_s": 11.672450000020035,
+        "mean_s": 8.353467811159142
+      },
+      {
+        "phase": "Restart from 333",
+        "stage": "return",
+        "n": 1398,
+        "p50_s": 9.71899999998277,
+        "p90_s": 12.875,
+        "p99_s": 23.335769999936364,
+        "mean_s": 10.465493562231412
+      }
+    ],
+    "farm_profiles": [
+      {
+        "farm_group": "Mega Farm V6 \u2014 natural completion",
+        "runs": 31,
+        "retained_sp": 10936,
+        "active_h": 8.842688333333419,
+        "retained_sp_h": 1236.7279709243658,
+        "cars_supported_h": 58.89180813925551,
+        "drive_p50_s": 917.242,
+        "drive_p90_s": 917.35
+      },
+      {
+        "farm_group": "Mega Farm V6 \u2014 intentional top up",
+        "runs": 25,
+        "retained_sp": 4876,
+        "active_h": 4.008294999999999,
+        "retained_sp_h": 1216.4773301366297,
+        "cars_supported_h": 57.92749191126808,
+        "drive_p50_s": 600.193,
+        "drive_p90_s": 600.5015999999999
+      },
+      {
+        "farm_group": "Untagged \u2014 natural completion",
+        "runs": 1,
+        "retained_sp": 373,
+        "active_h": 0.31094194444444534,
+        "retained_sp_h": 1199.5808435122276,
+        "cars_supported_h": 57.122897310106076,
+        "drive_p50_s": 915.784,
+        "drive_p90_s": 915.784
+      },
+      {
+        "farm_group": "Untagged \u2014 intentional top up",
+        "runs": 1,
+        "retained_sp": 242,
+        "active_h": 0.2135024999999991,
+        "retained_sp_h": 1133.4761888034147,
+        "cars_supported_h": 53.97505660968642,
+        "drive_p50_s": 600.572,
+        "drive_p90_s": 600.572
+      },
+      {
+        "farm_group": "Untagged \u2014 legacy",
+        "runs": 11,
+        "retained_sp": 3718,
+        "active_h": 3.288376388888872,
+        "retained_sp_h": 1130.649159434056,
+        "cars_supported_h": 53.840436163526476,
+        "drive_p50_s": null,
+        "drive_p90_s": null
+      },
+      {
+        "farm_group": "Initial farm telemetry",
+        "runs": 35,
+        "retained_sp": 11600,
+        "active_h": 10.392586388888898,
+        "retained_sp_h": 1116.180281397708,
+        "cars_supported_h": 53.151441971319436,
+        "drive_p50_s": null,
+        "drive_p90_s": null
+      },
+      {
+        "farm_group": "Mini Farm V2 \u2014 natural completion",
+        "runs": 29,
+        "retained_sp": 3712,
+        "active_h": 3.462751944444446,
+        "retained_sp_h": 1071.9797604779174,
+        "cars_supported_h": 51.04665526085321,
+        "drive_p50_s": 298.601,
+        "drive_p90_s": 298.85040000000004
+      },
+      {
+        "farm_group": "Mega Farm V6 \u2014 interrupted",
+        "runs": 8,
+        "retained_sp": 2893,
+        "active_h": 2.784135555555557,
+        "retained_sp_h": 1039.1017040198387,
+        "cars_supported_h": 49.481033524754224,
+        "drive_p50_s": 917.2589999999999,
+        "drive_p90_s": 917.312
+      },
+      {
+        "farm_group": "Untagged \u2014 capped",
+        "runs": 5,
+        "retained_sp": 1110,
+        "active_h": 1.4963497222222375,
+        "retained_sp_h": 741.8051966832544,
+        "cars_supported_h": 35.32405698491688,
+        "drive_p50_s": null,
+        "drive_p90_s": null
+      },
+      {
+        "farm_group": "Mini Farm V2 \u2014 interrupted",
+        "runs": 5,
+        "retained_sp": 674,
+        "active_h": 1.1405102777777938,
+        "retained_sp_h": 590.9635477492083,
+        "cars_supported_h": 28.14112132139087,
+        "drive_p50_s": 298.67199999999997,
+        "drive_p90_s": 298.748
+      }
+    ],
+    "classified_failures": [
+      {
+        "cause": "OCR_fail",
+        "events": 341,
+        "recovery_minutes": 97.17068331666658,
+        "mean_cost_s": 17.097480935483855
+      },
+      {
+        "cause": "mastery_detection",
+        "events": 71,
+        "recovery_minutes": 21.297060300000005,
+        "mean_cost_s": 17.99751574647888
+      },
+      {
+        "cause": "purchase_fail",
+        "events": 27,
+        "recovery_minutes": 20.406115866666667,
+        "mean_cost_s": 45.346924148148155
+      },
+      {
+        "cause": "game_crash",
+        "events": 2,
+        "recovery_minutes": 6.794302366666667,
+        "mean_cost_s": 203.829071
+      },
+      {
+        "cause": "choose_timeout",
+        "events": 7,
+        "recovery_minutes": 5.2236667,
+        "mean_cost_s": 44.774286000000004
+      },
+      {
+        "cause": "focus_lost",
+        "events": 30,
+        "recovery_minutes": 5.135495916666668,
+        "mean_cost_s": 10.270991833333335
+      },
+      {
+        "cause": "unexpected_screen",
+        "events": 9,
+        "recovery_minutes": 3.761210216666667,
+        "mean_cost_s": 25.074734777777778
+      },
+      {
+        "cause": "other",
+        "events": 5,
+        "recovery_minutes": 2.2946120166666666,
+        "mean_cost_s": 27.535344199999997
+      },
+      {
+        "cause": "return_timeout",
+        "events": 9,
+        "recovery_minutes": 1.878074816666667,
+        "mean_cost_s": 12.52049877777778
+      }
+    ],
+    "percentile_method": "Linear interpolation over sorted individual durations (NumPy percentile); seconds, not cumulative durations."
+  },
+  "phase_2": {
+    "goal_id": "20260915_105105_830001",
+    "completed_at": "2026-09-18T00:11:44+09:00",
+    "completion_evidence": {
+      "rewards": 1337,
+      "cars_bought": 1337,
+      "phase": "complete",
+      "final_credits_latest_observation": 42170,
+      "three_read_credit_gate": 41170,
+      "final_sp": 999,
+      "mad_mike_remaining": 0,
+      "garage_verified_empty": true
+    },
+    "inventory": {
+      "super_wheelspins": 2506,
+      "wheelspins": 230,
+      "actual_super_wheelspins_at_last_home_sync": 2505,
+      "verified_rewards_after_sync": 1
+    },
+    "account": {
+      "gamertag": "aichan3301",
+      "level": 302,
+      "prestige": 6,
+      "opening_credits": 120157670,
+      "final_credits": 42170,
+      "gross_mazda_spend": 127015000,
+      "reconciled_other_inflow": 6899500
+    },
+    "timing": {
+      "wall_hours": 61.344166666666666,
+      "goal_active_hours": 46.64553916666673,
+      "farm_active_hours": 27.696640833333333,
+      "conversion_recorded_hours": 21.158068055555574,
+      "sw_per_active_hour": 28.66297665083976,
+      "sw_per_wall_hour": 21.795063371958758
+    },
+    "conversion": {
+      "cycle_percentiles_seconds": {
+        "n": 1337,
+        "p50": 45.625,
+        "p90": 54.63780000000261,
+        "p99": 59.00739999999642,
+        "mean": 46.86220119670898
+      },
+      "latest20_percentiles_seconds": {
+        "n": 20,
+        "p50": 47.28900000000431,
+        "p90": 56.41020000000135,
+        "p99": 57.55140000000596,
+        "mean": 50.0679999999993
+      },
+      "first_pass_yield_percent": 97.23261032161555,
+      "cars_per_recorded_conversion_hour": 63.19102464787363,
+      "stage_percentiles_seconds": [
+        {
+          "stage": "collection",
+          "n": 1337,
+          "p50": 0.062000000005355105,
+          "p90": 0.125,
+          "p99": 0.765639999988489,
+          "mean": 0.13640837696371858
+        },
+        {
+          "stage": "buy",
+          "n": 1337,
+          "p50": 3.827999999979511,
+          "p90": 4.436999999990803,
+          "p99": 13.304399999997123,
+          "mean": 4.2195018698575115
+        },
+        {
+          "stage": "bought",
+          "n": 1337,
+          "p50": 0.875,
+          "p90": 1.047000000020489,
+          "p99": 1.1505999999935754,
+          "mean": 0.884131637995585
+        },
+        {
+          "stage": "choose",
+          "n": 1337,
+          "p50": 20.905999999988126,
+          "p90": 26.012400000001072,
+          "p99": 32.46864000000525,
+          "mean": 21.74126925953593
+        },
+        {
+          "stage": "open_mastery",
+          "n": 1335,
+          "p50": 3.187000000005355,
+          "p90": 3.562999999994645,
+          "p99": 14.515020000000662,
+          "mean": 3.4687205992511423
+        },
+        {
+          "stage": "mastery",
+          "n": 1337,
+          "p50": 6.860000000015134,
+          "p90": 7.125,
+          "p99": 7.2810000000067525,
+          "mean": 6.899804038893017
+        },
+        {
+          "stage": "return",
+          "n": 1337,
+          "p50": 9.328000000001339,
+          "p90": 9.89100000000326,
+          "p99": 10.368320000005193,
+          "mean": 9.40542408376975
+        }
+      ]
+    },
+    "farming": {
+      "runs": 112,
+      "recorded_retained_sp": 28700,
+      "active_hours": 27.696640833333333,
+      "retained_sp_per_hour": 1036.2267457885762,
+      "cars_supported_per_hour": 49.344130751836964,
+      "run_groups": [
+        {
+          "run_type": "natural_completion",
+          "runs": 71,
+          "retained_sp": 20565,
+          "active_hours": 19.957226944444415,
+          "retained_sp_per_hour": 1030.4537828450548,
+          "cars_supported_per_hour": 49.069227754526416,
+          "drive_p50_seconds": 917.2109999999999,
+          "drive_p90_seconds": 917.35
+        },
+        {
+          "run_type": "intentional_top_up",
+          "runs": 34,
+          "retained_sp": 6453,
+          "active_hours": 5.786015555555575,
+          "retained_sp_per_hour": 1115.2752594665953,
+          "cars_supported_per_hour": 53.10834568888549,
+          "drive_p50_seconds": 639.1629999999999,
+          "drive_p90_seconds": 836.4395
+        },
+        {
+          "run_type": "interrupted",
+          "runs": 7,
+          "retained_sp": 1682,
+          "active_hours": 1.9533983333333444,
+          "retained_sp_per_hour": 861.0634970337969,
+          "cars_supported_per_hour": 41.00302366827604,
+          "drive_p50_seconds": 917.226,
+          "drive_p90_seconds": 917.3135
+        }
+      ],
+      "estimated_cap_loss_sp": 70.8507144296803
+    },
+    "reliability": {
+      "broad_retries": 306,
+      "broad_crashes": 7,
+      "classified_failures": 42,
+      "classified_recovery_minutes": 15.775516666665135,
+      "failure_groups": [
+        {
+          "cause": "choose_timeout",
+          "events": 1,
+          "recovery_minutes": 0.4724000000001979,
+          "mean_cost_seconds": 28.344000000011874
+        },
+        {
+          "cause": "mastery_detection",
+          "events": 13,
+          "recovery_minutes": 3.1994833333330464,
+          "mean_cost_seconds": 14.766846153844828
+        },
+        {
+          "cause": "other",
+          "events": 27,
+          "recovery_minutes": 11.903883333331882,
+          "mean_cost_seconds": 26.453074074070848
+        },
+        {
+          "cause": "return_timeout",
+          "events": 1,
+          "recovery_minutes": 0.1997500000000097,
+          "mean_cost_seconds": 11.985000000000582
+        }
+      ]
+    },
+    "cleanup": {
+      "recorded_phase_2_removals": 1330,
+      "cars_bought": 1337,
+      "verified_remaining": 0
+    },
+    "cohorts": [
+      {
+        "cohort": "Pre-Phase 1 \u00b7 0\u2192517",
+        "cars": 517,
+        "farm_runs": 35,
+        "active_hours": 19.25608138888889,
+        "wall_hours": "N/A",
+        "farm_active_hours": 10.392586388888898,
+        "retained_sp": 11600,
+        "cycle_p50_s": 56.09399999999732,
+        "cycle_p90_s": 63.63099999999395,
+        "cycle_p99_s": 72.3536800000013,
+        "sw_active_h": 26.84866092736388,
+        "sw_wall_h": "N/A",
+        "farm_sp_h": 1116.180281397708,
+        "farm_cars_h": 53.151441971319436,
+        "conversion_cars_h": "N/A",
+        "retries": 76,
+        "crashes": 2,
+        "fpy_percent": 96.71179883945841,
+        "final_credits": "N/A",
+        "final_sp": "N/A",
+        "remaining_mad_mikes": "N/A"
+      },
+      {
+        "cohort": "Phase 1 \u00b7 restart from 333",
+        "cars": 1398,
+        "farm_runs": 116,
+        "active_hours": 54.718423333333234,
+        "wall_hours": "N/A",
+        "farm_active_hours": 25.547551666666767,
+        "retained_sp": 28534,
+        "cycle_p50_s": 47.367499999993015,
+        "cycle_p90_s": 58.6917999999976,
+        "cycle_p99_s": 83.46317000000205,
+        "sw_active_h": 25.54898176586111,
+        "sw_wall_h": "N/A",
+        "farm_sp_h": 1116.8976335697093,
+        "farm_cars_h": 53.18560159855759,
+        "conversion_cars_h": "N/A",
+        "retries": 1744,
+        "crashes": 20,
+        "fpy_percent": 95.92274678111588,
+        "final_credits": "N/A",
+        "final_sp": "N/A",
+        "remaining_mad_mikes": "N/A"
+      },
+      {
+        "cohort": "Phase 2 \u00b7 credit exhaustion",
+        "cars": 1337,
+        "farm_runs": 112,
+        "active_hours": 46.64553916666673,
+        "wall_hours": 61.344166666666666,
+        "farm_active_hours": 27.696640833333333,
+        "retained_sp": 28700,
+        "cycle_p50_s": 45.625,
+        "cycle_p90_s": 54.63780000000261,
+        "cycle_p99_s": 59.00739999999642,
+        "sw_active_h": 28.66297665083976,
+        "sw_wall_h": 21.795063371958758,
+        "farm_sp_h": 1036.2267457885762,
+        "farm_cars_h": 49.344130751836964,
+        "conversion_cars_h": 63.19102464787363,
+        "retries": 306,
+        "crashes": 7,
+        "fpy_percent": 97.23261032161555,
+        "final_credits": 42170,
+        "final_sp": 999,
+        "remaining_mad_mikes": 0
+      }
+    ],
+    "phase_1_comparison": [
+      {
+        "metric": "Cycle P50 (s)",
+        "phase_1": 47.367499999993015,
+        "phase_2": 45.625,
+        "improvement_percent": 3.6786826410371503
+      },
+      {
+        "metric": "Cycle P90 (s)",
+        "phase_1": 58.6917999999976,
+        "phase_2": 54.63780000000261,
+        "improvement_percent": 6.907268136256089
+      },
+      {
+        "metric": "Cycle P99 (s)",
+        "phase_1": 83.46317000000205,
+        "phase_2": 59.00739999999642,
+        "improvement_percent": 29.301271447040683
+      },
+      {
+        "metric": "SW / active hour",
+        "phase_1": 25.54898176586111,
+        "phase_2": 28.66297665083976,
+        "improvement_percent": 12.188332644785124
+      },
+      {
+        "metric": "Retained SP / farm hour",
+        "phase_1": 1116.8976335697093,
+        "phase_2": 1036.2267457885762,
+        "improvement_percent": -7.222764679275167
+      },
+      {
+        "metric": "Farm capacity (cars/h)",
+        "phase_1": 53.18560159855759,
+        "phase_2": 49.344130751836964,
+        "improvement_percent": -7.222764679275165
+      },
+      {
+        "metric": "Retries",
+        "phase_1": 1744.0,
+        "phase_2": 306.0,
+        "improvement_percent": 82.45412844036697
+      },
+      {
+        "metric": "Crashes",
+        "phase_1": 20.0,
+        "phase_2": 7.0,
+        "improvement_percent": 65.0
+      }
+    ],
+    "methods": {
+      "missing_data": "Unavailable historical values are N/A; they are not imputed.",
+      "percentiles": "NumPy linear interpolation over individual observations.",
+      "inventory": "Last My Horizon read plus later verified mastery rewards.",
+      "credits": "Latest matching account observation; the terminal purchase gate independently had three matching reads below 95,000 CR."
     }
-  ],
-  "stage_percentiles": [
-    {
-      "phase": "Initial 0→517",
-      "stage": "collection",
-      "n": 517,
-      "p50_s": 0.46900000001187436,
-      "p90_s": 0.5160000000032596,
-      "p99_s": 0.5940000000118744,
-      "mean_s": 0.47802127659589017
-    },
-    {
-      "phase": "Initial 0→517",
-      "stage": "buy",
-      "n": 517,
-      "p50_s": 6.907000000006519,
-      "p90_s": 7.359400000001187,
-      "p99_s": 17.023600000002187,
-      "mean_s": 6.956820116054059
-    },
-    {
-      "phase": "Initial 0→517",
-      "stage": "bought",
-      "n": 517,
-      "p50_s": 1.2660000000032596,
-      "p90_s": 1.312999999994645,
-      "p99_s": 1.344000000009546,
-      "mean_s": 1.2093249516442228
-    },
-    {
-      "phase": "Initial 0→517",
-      "stage": "choose",
-      "n": 517,
-      "p50_s": 24.030999999988126,
-      "p90_s": 29.984399999998278,
-      "p99_s": 35.84359999999054,
-      "mean_s": 25.328595744680385
-    },
-    {
-      "phase": "Initial 0→517",
-      "stage": "open_mastery",
-      "n": 512,
-      "p50_s": 3.312999999994645,
-      "p90_s": 3.6233999999996747,
-      "p99_s": 13.442769999980227,
-      "mean_s": 3.4788496093748336
-    },
-    {
-      "phase": "Initial 0→517",
-      "stage": "mastery",
-      "n": 517,
-      "p50_s": 8.375,
-      "p90_s": 8.584999999991851,
-      "p99_s": 8.995039999999571,
-      "mean_s": 8.401481624759358
-    },
-    {
-      "phase": "Initial 0→517",
-      "stage": "return",
-      "n": 517,
-      "p50_s": 11.46799999999348,
-      "p90_s": 12.444000000000234,
-      "p99_s": 16.568080000030996,
-      "mean_s": 11.765911025144044
-    },
-    {
-      "phase": "Restart from 333",
-      "stage": "collection",
-      "n": 1398,
-      "p50_s": 0.06300000000919681,
-      "p90_s": 0.125,
-      "p99_s": 0.6870299999776762,
-      "mean_s": 0.14778540772496232
-    },
-    {
-      "phase": "Restart from 333",
-      "stage": "buy",
-      "n": 1398,
-      "p50_s": 4.0310000000172295,
-      "p90_s": 5.5939999999827705,
-      "p99_s": 14.563409999976864,
-      "mean_s": 5.229334048640955
-    },
-    {
-      "phase": "Restart from 333",
-      "stage": "bought",
-      "n": 1398,
-      "p50_s": 0.9849999999860302,
-      "p90_s": 1.125,
-      "p99_s": 1.2179999999934807,
-      "mean_s": 0.9570064377686284
-    },
-    {
-      "phase": "Restart from 333",
-      "stage": "choose",
-      "n": 1398,
-      "p50_s": 21.15700000000652,
-      "p90_s": 29.04059999997844,
-      "p99_s": 34.2532699999999,
-      "mean_s": 23.449738912732236
-    },
-    {
-      "phase": "Restart from 333",
-      "stage": "open_mastery",
-      "n": 1394,
-      "p50_s": 3.437999999994645,
-      "p90_s": 3.807499999989523,
-      "p99_s": 14.940099999994562,
-      "mean_s": 4.021619799138901
-    },
-    {
-      "phase": "Restart from 333",
-      "stage": "mastery",
-      "n": 1398,
-      "p50_s": 7.311999999976251,
-      "p90_s": 11.462600000001839,
-      "p99_s": 11.672450000020035,
-      "mean_s": 8.353467811159142
-    },
-    {
-      "phase": "Restart from 333",
-      "stage": "return",
-      "n": 1398,
-      "p50_s": 9.71899999998277,
-      "p90_s": 12.875,
-      "p99_s": 23.335769999936364,
-      "mean_s": 10.465493562231412
-    }
-  ],
-  "farm_profiles": [
-    {
-      "farm_group": "Mega Farm V6 — natural completion",
-      "runs": 31,
-      "retained_sp": 10936,
-      "active_h": 8.842688333333419,
-      "retained_sp_h": 1236.7279709243658,
-      "cars_supported_h": 58.89180813925551,
-      "drive_p50_s": 917.242,
-      "drive_p90_s": 917.35
-    },
-    {
-      "farm_group": "Mega Farm V6 — intentional top up",
-      "runs": 25,
-      "retained_sp": 4876,
-      "active_h": 4.008294999999999,
-      "retained_sp_h": 1216.4773301366297,
-      "cars_supported_h": 57.92749191126808,
-      "drive_p50_s": 600.193,
-      "drive_p90_s": 600.5015999999999
-    },
-    {
-      "farm_group": "Untagged — natural completion",
-      "runs": 1,
-      "retained_sp": 373,
-      "active_h": 0.31094194444444534,
-      "retained_sp_h": 1199.5808435122276,
-      "cars_supported_h": 57.122897310106076,
-      "drive_p50_s": 915.784,
-      "drive_p90_s": 915.784
-    },
-    {
-      "farm_group": "Untagged — intentional top up",
-      "runs": 1,
-      "retained_sp": 242,
-      "active_h": 0.2135024999999991,
-      "retained_sp_h": 1133.4761888034147,
-      "cars_supported_h": 53.97505660968642,
-      "drive_p50_s": 600.572,
-      "drive_p90_s": 600.572
-    },
-    {
-      "farm_group": "Untagged — legacy",
-      "runs": 11,
-      "retained_sp": 3718,
-      "active_h": 3.288376388888872,
-      "retained_sp_h": 1130.649159434056,
-      "cars_supported_h": 53.840436163526476,
-      "drive_p50_s": null,
-      "drive_p90_s": null
-    },
-    {
-      "farm_group": "Initial farm telemetry",
-      "runs": 35,
-      "retained_sp": 11600,
-      "active_h": 10.392586388888898,
-      "retained_sp_h": 1116.180281397708,
-      "cars_supported_h": 53.151441971319436,
-      "drive_p50_s": null,
-      "drive_p90_s": null
-    },
-    {
-      "farm_group": "Mini Farm V2 — natural completion",
-      "runs": 29,
-      "retained_sp": 3712,
-      "active_h": 3.462751944444446,
-      "retained_sp_h": 1071.9797604779174,
-      "cars_supported_h": 51.04665526085321,
-      "drive_p50_s": 298.601,
-      "drive_p90_s": 298.85040000000004
-    },
-    {
-      "farm_group": "Mega Farm V6 — interrupted",
-      "runs": 8,
-      "retained_sp": 2893,
-      "active_h": 2.784135555555557,
-      "retained_sp_h": 1039.1017040198387,
-      "cars_supported_h": 49.481033524754224,
-      "drive_p50_s": 917.2589999999999,
-      "drive_p90_s": 917.312
-    },
-    {
-      "farm_group": "Untagged — capped",
-      "runs": 5,
-      "retained_sp": 1110,
-      "active_h": 1.4963497222222375,
-      "retained_sp_h": 741.8051966832544,
-      "cars_supported_h": 35.32405698491688,
-      "drive_p50_s": null,
-      "drive_p90_s": null
-    },
-    {
-      "farm_group": "Mini Farm V2 — interrupted",
-      "runs": 5,
-      "retained_sp": 674,
-      "active_h": 1.1405102777777938,
-      "retained_sp_h": 590.9635477492083,
-      "cars_supported_h": 28.14112132139087,
-      "drive_p50_s": 298.67199999999997,
-      "drive_p90_s": 298.748
-    }
-  ],
-  "classified_failures": [
-    {
-      "cause": "OCR_fail",
-      "events": 341,
-      "recovery_minutes": 97.17068331666658,
-      "mean_cost_s": 17.097480935483855
-    },
-    {
-      "cause": "mastery_detection",
-      "events": 71,
-      "recovery_minutes": 21.297060300000005,
-      "mean_cost_s": 17.99751574647888
-    },
-    {
-      "cause": "purchase_fail",
-      "events": 27,
-      "recovery_minutes": 20.406115866666667,
-      "mean_cost_s": 45.346924148148155
-    },
-    {
-      "cause": "game_crash",
-      "events": 2,
-      "recovery_minutes": 6.794302366666667,
-      "mean_cost_s": 203.829071
-    },
-    {
-      "cause": "choose_timeout",
-      "events": 7,
-      "recovery_minutes": 5.2236667,
-      "mean_cost_s": 44.774286000000004
-    },
-    {
-      "cause": "focus_lost",
-      "events": 30,
-      "recovery_minutes": 5.135495916666668,
-      "mean_cost_s": 10.270991833333335
-    },
-    {
-      "cause": "unexpected_screen",
-      "events": 9,
-      "recovery_minutes": 3.761210216666667,
-      "mean_cost_s": 25.074734777777778
-    },
-    {
-      "cause": "other",
-      "events": 5,
-      "recovery_minutes": 2.2946120166666666,
-      "mean_cost_s": 27.535344199999997
-    },
-    {
-      "cause": "return_timeout",
-      "events": 9,
-      "recovery_minutes": 1.878074816666667,
-      "mean_cost_s": 12.52049877777778
-    }
-  ],
-  "percentile_method": "Linear interpolation over sorted individual durations (NumPy percentile); seconds, not cumulative durations."
+  },
+  "missing_data_policy": "Unavailable cohort values remain N/A and are not imputed."
 }
