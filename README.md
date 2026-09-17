@@ -82,165 +82,114 @@ Private gameplay captures, `runs/`, `failures/`, `purchases/`, `LocalState/`, vi
 
 ## 2. Data analysis
 
-This section compares the two large production cohorts using the same definitions. It answers one decision: **which Phase 2 changes should stay, and where should the next optimization effort go?**
+The complete operation is split into three measured cohorts. **Pre-Phase 1** is the original 0→517 run, **Phase 1** is the 1,398-car restart, and **Phase 2** is the final credit-exhaustion run. Missing historical values stay **N/A**.
 
-The result is clear: keep the Phase 2 conversion and recovery changes. They reduced the typical cycle modestly and cut the slow tail sharply. Farm throughput fell, however, and remains the system bottleneck.
+### Final Phase 2 result
 
-### Metric definitions
+**1,337 new SW · 1,337 cars · 112 farms · 2,506 saved SW · 230 WS · 999 SP · 42,170 CR · 0 Mad Mikes**
 
-| Metric | Definition | Why it matters |
-|---|---|---|
-| Active SW/h | Verified new mastery rewards divided by recorded active mission hours | Output while the worker is actively farming, converting, or recovering |
-| Wall SW/h | Verified new rewards divided by elapsed mission time | User-visible end-to-end throughput |
-| Cycle P50 / P90 / P99 | 50th, 90th, and 99th percentiles of buy → mastery → return time | Typical speed and tail latency |
-| First-pass yield | Cars completed without a retry or recovery event | Reliability of the conversion line |
-| Retained SP/h | Post-run minus pre-run SP divided by active farm time | Useful farm output after the 999-SP cap |
-| Farm capacity | Retained SP/h ÷ 21 SP per Mazda | Maximum cars the farm can support per hour |
-| Conversion capacity | 3,600 ÷ effective conversion seconds per car | Maximum cars the conversion loop can process per hour |
-| Crash/retry incidence | Events per 1,000 completed cars | Normalizes reliability for different cohort sizes |
-| Improvement | `(Phase 1 − Phase 2) ÷ Phase 1`; positive means Phase 2 is better | Comparable direction across timing and failure metrics |
+| Cohort | Cars | Farms | Active | Wall | P50 | P90 | P99 | SW/active h | Farm SP/h | Retries | Crashes |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| Pre-Phase 1 · 0→517 | 517 | 35 | 19.26h | N/A | 56.09s | 63.63s | 72.35s | 26.85 | 1116 | 76 | 2 |
+| Phase 1 · restart from 333 | 1,398 | 116 | 54.72h | N/A | 47.37s | 58.69s | 83.46s | 25.55 | 1117 | 1,744 | 20 |
+| Phase 2 · credit exhaustion | 1,337 | 112 | 46.65h | 61.34h | 45.62s | 54.64s | 59.01s | 28.66 | 1036 | 306 | 7 |
 
-### Cohorts and terminal proof
-
-| Scope | Phase 1 comparable cohort | Phase 2 |
-|---|---:|---:|
-| Mission | Restart from 333 | Credit-exhaustion run |
-| Completed cars | **1,398** | **1,281** |
-| Farm runs | **116** | **104** |
-| Recorded active time | **54.72h** | **46.33h** |
-| Recorded wall time | part of 87.04h full-operation window | **57.81h** |
-| Final credits | **87,720 CR** | **11,170 CR** |
-| Final SP | **39** | **999** |
-| Final Mad Mikes | **0 verified** | **0 verified** |
-
-Phase 2 ran from **2026-09-15 10:51 to 2026-09-17 20:39 JST**. It produced **1,281 verified Super Wheelspins** from **1,281 purchased and processed Mazdas**. The final hybrid inventory was **2,482 SW and 221 WS**: My Horizon directly showed 2,481 SW, and one later verified mastery reward was added.
-
-### Headline comparison
-
-| Metric | Phase 1 | Phase 2 | Phase 2 change | Statistical note |
-|---|---:|---:|---:|---|
-| Cycle P50 | 47.37s | **45.44s** | **4.07% faster** | bootstrap 95% CI: **3.31% to 4.83%** |
-| Cycle P90 | 58.69s | **54.33s** | **7.44% faster** | bootstrap 95% CI: **6.05% to 9.03%** |
-| Cycle P99 | 83.46s | **58.96s** | **29.36% faster** | bootstrap 95% CI: **22.07% to 42.53%** |
-| Active throughput | 25.55 SW/h | **27.65 SW/h** | **8.21% higher** | mission active-time denominator |
-| Farm retained rate | **1,116.9 SP/h** | 1,044.8 SP/h | **6.45% lower** | 116 vs 104 farm runs |
-| Farm capacity | **53.19 cars/h** | 49.75 cars/h | **6.45% lower** | retained SP/h ÷ 21 |
-| Conversion capacity | **64.48 cars/h** | 63.31 cars/h | **1.81% lower** | recorded conversion time |
-| Crashes / 1,000 cars | 14.31 | **5.46** | **61.80% fewer** | broad mission counters |
-| Retries / 1,000 cars | 1,247.50 | **231.85** | **81.41% fewer** | broad mission counters |
-
-Percentile uncertainty uses a deterministic nonparametric bootstrap with 5,000 resamples. The intervals describe sampling uncertainty in the observed cycle distributions; they do not prove that every code change caused the improvement.
+![Three-cohort speed and throughput](docs/phase-2-report/charts/01_phase_comparison.png)
 
 ![Cycle-duration distributions](docs/phase-2-report/charts/07_cycle_ecdf.png)
 
-![Cycle improvement with confidence intervals](docs/phase-2-report/charts/08_cycle_improvement_ci.png)
+### Phase 2 line data
 
-The median improved by about two seconds, while the P99 dropped by 24.5 seconds. Phase 2's strongest gain was tail control.
-
-### Stage-level comparison
-
-| Stage | Phase 1 P50 | Phase 2 P50 | P50 gain | Phase 1 P90 | Phase 2 P90 | P90 gain | Phase 1 P99 | Phase 2 P99 | P99 gain |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| Collection | 0.063s | 0.062s | +1.6% | 0.125s | 0.125s | 0.0% | **0.687s** | 0.765s | −11.4% |
-| Buy | 4.031s | **3.797s** | +5.8% | 5.594s | **4.437s** | +20.7% | 14.563s | **13.256s** | +9.0% |
-| Bought transition | 0.985s | **0.860s** | +12.7% | 1.125s | **1.047s** | +6.9% | 1.218s | **1.128s** | +7.4% |
-| Choose newest | 21.157s | **20.875s** | +1.3% | 29.041s | **25.922s** | +10.7% | 34.253s | **32.481s** | +5.2% |
-| Open mastery | 3.438s | **3.172s** | +7.7% | 3.807s | **3.547s** | +6.8% | 14.940s | **14.494s** | +3.0% |
-| Mastery path | 7.312s | **6.859s** | +6.2% | 11.463s | **7.110s** | +38.0% | 11.672s | **7.269s** | +37.7% |
-| Return | 9.719s | **9.313s** | +4.2% | 12.875s | **9.890s** | +23.2% | 23.336s | **10.397s** | +55.4% |
-
-![Stage P50 comparison](docs/phase-2-report/charts/09_stage_p50_comparison.png)
-
-`Choose newest` still owns almost half of the median cycle and is the largest conversion-stage opportunity. Phase 2's biggest measured wins were mastery and return tail latency, which explains the large P99 improvement.
-
-### Capacity and bottleneck
-
-![Farm and conversion capacity comparison](docs/phase-2-report/charts/10_capacity_comparison.png)
-
-Phase 2 conversion could process **63.3 cars/h**, while the farm supported **49.8 cars/h**. The theoretical line imbalance was therefore **21.4% of conversion capacity**, and farming constrained sustained output. Faster conversion alone cannot raise long-run output until useful SP production catches up.
-
-Phase 2's **27.65 active SW/h** exceeded Phase 1 despite lower standalone farm and conversion capacity. Fewer retries and crashes recovered enough otherwise lost time to raise end-to-end output.
-
-### Phase 2 farm detail
-
-The 104 farm runs retained **27,524 SP** over **26.34 active hours**.
-
-| Run type | Runs | Retained SP | Active hours | Retained SP/h | Cars supported/h | Drive P50 | Drive P90 |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| Natural completion | 68 | 19,675 | 19.01h | 1,034.7 | 49.27 | 917.2s | 917.4s |
-| Intentional top-up | 29 | 6,167 | 5.38h | **1,147.4** | **54.64** | 700.3s | 839.5s |
-| Interrupted | 7 | 1,682 | 1.95h | 861.1 | 41.00 | 917.2s | 917.3s |
-
-Intentional top-ups were **10.9% more productive** than natural completions on retained SP/h and **33.3% more productive** than interrupted runs. This supports keeping headroom-aware top-ups and prioritizing removal of interruption and setup overhead. Estimated cap loss was only available for part of the cohort and totals **34.7 SP**; it is not a complete raw-yield ledger.
-
-![Phase 2 farm throughput](docs/phase-2-report/charts/04_farm_throughput.png)
-
-### Reliability and failure cost
-
-Phase 2 recorded **297 broad retries** and **7 crashes**. Cause-level timing covers 42 completed recovery rows and 15.8 minutes, so it is a subset of the broad counters.
-
-| Classified cause | Events | Recovery time | Mean cost |
-|---|---:|---:|---:|
-| Other | 27 | 11.9 min | 26.5s |
-| Mastery detection | 13 | 3.2 min | 14.8s |
-| Choose timeout | 1 | 0.5 min | 28.3s |
-| Return timeout | 1 | 0.2 min | 12.0s |
-
-Phase 2 first-pass yield was **97.11%**. Normalized crash incidence fell from 14.31 to 5.46 per 1,000 cars, and retry incidence fell from 1,247.50 to 231.85 per 1,000.
-
-![Phase 2 reliability](docs/phase-2-report/charts/06_reliability.png)
-
-### Finance and inventory reconciliation
-
-Each Mazda cost exactly 95,000 CR.
-
-| Phase 2 credit bridge | Amount |
+| Metric | Value |
 |---|---:|
-| Opening credits | 120,157,670 CR |
-| Other in-game inflow required to reconcile | **+1,548,500 CR** |
-| 1,281 Mazda purchases | **−121,695,000 CR** |
-| Final verified credits | **11,170 CR** |
+| Cycle P50 / P90 / P99 | **45.62s / 54.64s / 59.01s** |
+| Latest-20 P50 / P90 | **47.29s / 56.41s** |
+| First-pass yield | **97.23%** |
+| Farm capacity | **49.34 cars/h** |
+| Conversion capacity | **63.19 cars/h** |
+| Retained farm output | **1036 SP/h** |
+| Phase 2 SW / active hour | **28.66** |
+| Phase 2 SW / wall hour | **21.80** |
+| Broad retries / crashes | **306 / 7** |
 
-The cleanup log contains **1,277 row-level removals**. Four purchases fall outside that removal-event coverage, while the final duplicate-off and manufacturer-index checks independently verified that **zero Mad Mikes remained**.
+![Phase 2 cycle timeline](docs/phase-2-report/charts/02_cycle_timeline.png)
 
-![Phase 2 credit timeline](docs/phase-2-report/charts/05_credit_timeline.png)
+![Stage P50 across all cohorts](docs/phase-2-report/charts/09_stage_p50_comparison.png)
 
-### What changed in Phase 2
+![Farm throughput](docs/phase-2-report/charts/04_farm_throughput.png)
 
-- Matching full-header credit reads replaced single-read purchase decisions.
-- A completed mission reopens if a post-farm credit reward funds another exact Mazda.
-- Terminal shutdown restores SP to 999 before cleanup.
-- Cleanup checkpoints every 500 cars and switches to a single-copy filter when duplicates are exhausted.
-- Empty filtered garages are recognized explicitly and recovered through Filter Selection.
-- Stationary-car detection applies a bounded reverse recovery during farming.
-- Account reads, Discord rendering, screenshots, and analytics moved off the input-critical path where safe.
-- OpenCV handles stable visual states; OCR handles variable values with multi-read confirmation for financial decisions.
-- Game captures older than 15 minutes are rejected for reports.
+![Farm and conversion capacity](docs/phase-2-report/charts/10_capacity_comparison.png)
 
-### Decision from the comparison
+#### Detailed phase data
 
-Keep the Phase 2 purchase, mastery, return, checkpoint, cleanup, and recovery logic. It produced a statistically clear cycle improvement and materially reduced failure incidence. The next optimization target is SP farming: improve useful retained yield, shorten setup and exit boundaries, and prevent interrupted runs while preserving the faster intentional top-up policy.
+Cycle P50/P90/P99: **45.62s / 54.64s / 59.01s**. Latest-20 P50/P90: **47.29s / 56.41s**. First-pass yield: **97.23%**. Conversion capacity: **63.19 cars/h**.
 
-### Evidence quality and limitations
+![Phase 2 timeline](docs/phase-2-report/charts/02_cycle_timeline.png)
 
-**Directly verified:** purchase count, mastery reward count, cycle rows, farm pre/post SP reads, final credit proof, terminal SP proof, My Horizon inventory reads, and final zero-car cleanup.
+| Stage | Pre-P1 P50 | P1 P50 | P2 P50 | P2 P90 | P2 P99 |
+|---|---:|---:|---:|---:|---:|
+| collection | 0.469s | 0.063s | 0.062s | 0.125s | 0.766s |
+| buy | 6.907s | 4.031s | 3.828s | 4.437s | 13.304s |
+| bought | 1.266s | 0.985s | 0.875s | 1.047s | 1.151s |
+| choose | 24.031s | 21.157s | 20.906s | 26.012s | 32.469s |
+| open_mastery | 3.313s | 3.438s | 3.187s | 3.563s | 14.515s |
+| mastery | 8.375s | 7.312s | 6.860s | 7.125s | 7.281s |
+| return | 11.468s | 9.719s | 9.328s | 9.891s | 10.368s |
 
-**Derived from direct records:** percentile distributions, capacities, throughput, gross Mazda spend, reconciled non-purchase credit inflow, and normalized failure incidence.
+![Stage latency](docs/phase-2-report/charts/03_stage_percentiles.png)
 
-**Incomplete:** historic cap loss, failure causes before taxonomy existed, removals before cleanup telemetry, and the exact source of reconciled credit inflow. Missing values stay unknown rather than being converted to zero. Phase 1 and Phase 2 happened at different times, so the comparison is observational rather than a randomized experiment.
+![Stage comparison](docs/phase-2-report/charts/09_stage_p50_comparison.png)
 
-### Reproducible exports
+#### SP farming
+
+The **112** Phase 2 farm runs retained **28,700 SP** in **27.70 active hours**: **1036 SP/h**, supporting **49.34 cars/h**. The 15% target from the 1,221.6 SP/h baseline was 1,404.8 SP/h and was not sustained phase-wide.
+
+| Run type | Runs | Retained SP | Active | SP/h | Cars/h | Drive P50 | Drive P90 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| natural_completion | 71 | 20,565 | 19.96h | 1030 | 49.07 | 917.2s | 917.4s |
+| intentional_top_up | 34 | 6,453 | 5.79h | 1115 | 53.11 | 639.2s | 836.4s |
+| interrupted | 7 | 1,682 | 1.95h | 861 | 41.00 | 917.2s | 917.3s |
+
+Estimated cap loss where instrumented: **70.9 SP**.
+
+![Farm throughput](docs/phase-2-report/charts/04_farm_throughput.png)
+
+![Capacity](docs/phase-2-report/charts/10_capacity_comparison.png)
+
+#### Reliability
+
+Broad counters: **306 retries**, **7 crashes**, **97.23% first-pass yield**.
+
+| Cause | Events | Recovery | Mean cost |
+|---|---:|---:|---:|
+| choose_timeout | 1 | 0.5 min | 28.3s |
+| mastery_detection | 13 | 3.2 min | 14.8s |
+| other | 27 | 11.9 min | 26.5s |
+| return_timeout | 1 | 0.2 min | 12.0s |
+
+![Reliability](docs/phase-2-report/charts/06_reliability.png)
+
+### Finance and terminal proof
+
+| Item | Value |
+|---|---:|
+| Opening credits | **120,157,670 CR** |
+| Other reconciled in-game inflow | **+6,899,500 CR** |
+| Mazda spend | **−127,015,000 CR** |
+| Latest observed credits | **42,170 CR** |
+| Terminal purchase gate | **41,170 CR · 3 matching reads** |
+| Terminal SP | **999 / 999** |
+| Mad Mikes remaining | **0 verified** |
+
+![Credit observations](docs/phase-2-report/charts/05_credit_timeline.png)
+
+### Files
 
 - [Full Phase 2 report](docs/phase-2-report/REPORT.md)
-- [Reviewed Phase 2 snapshot](docs/phase-2-report/reviewed_snapshot.json)
-- [Detailed Phase 1 vs Phase 2 metrics](docs/phase-2-report/data/comparison_detailed.csv)
-- [Stage comparison](docs/phase-2-report/data/stage_comparison.csv)
-- [Machine-readable comparison analysis](docs/phase-2-report/comparison_analysis.json)
-- [Phase 2 stage percentiles](docs/phase-2-report/data/stage_percentiles.csv)
-- [Phase 2 farm profiles](docs/phase-2-report/data/farm_profiles.csv)
-- [Phase 2 classified failures](docs/phase-2-report/data/classified_failures.csv)
-- [Historical full-operation report](docs/full-operation-report/REPORT.md)
-- [Historical full-operation reviewed snapshot](docs/full-operation-report/reviewed_snapshot.json)
-- [Chart methodology](CHART-METHODS.md)
+- [Reviewed snapshot](docs/phase-2-report/reviewed_snapshot.json)
+- [Three-cohort CSV](docs/phase-2-report/data/cohort_comparison.csv)
+- [Stage percentiles](docs/phase-2-report/data/stage_percentiles.csv)
+- [Farm profiles](docs/phase-2-report/data/farm_profiles.csv)
+- [Classified failures](docs/phase-2-report/data/classified_failures.csv)
 
-The historical report preserves the earlier **0 → 517 → 333 → 1,680 SW** narrative. The Phase 2 report records the later credit-exhaustion run through **2,482 saved SW**, 999 SP, 11,170 CR, and zero remaining Mad Mikes.
+Raw logs, screenshots, purchase ledgers, local state, and Discord credentials are excluded from Git. Pre-Phase 1 fields without preserved cohort-level proof are reported as N/A rather than inferred.
