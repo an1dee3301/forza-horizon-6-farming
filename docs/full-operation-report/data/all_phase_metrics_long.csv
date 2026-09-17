@@ -1,0 +1,61 @@
+cohort,metric,value
+Pre-Phase 1 · 0→517,cars,517
+Pre-Phase 1 · 0→517,farm_runs,35
+Pre-Phase 1 · 0→517,active_hours,19.25608138888889
+Pre-Phase 1 · 0→517,wall_hours,N/A
+Pre-Phase 1 · 0→517,farm_active_hours,10.392586388888898
+Pre-Phase 1 · 0→517,retained_sp,11600
+Pre-Phase 1 · 0→517,cycle_p50_s,56.09399999999732
+Pre-Phase 1 · 0→517,cycle_p90_s,63.63099999999395
+Pre-Phase 1 · 0→517,cycle_p99_s,72.3536800000013
+Pre-Phase 1 · 0→517,sw_active_h,26.84866092736388
+Pre-Phase 1 · 0→517,sw_wall_h,N/A
+Pre-Phase 1 · 0→517,farm_sp_h,1116.180281397708
+Pre-Phase 1 · 0→517,farm_cars_h,53.151441971319436
+Pre-Phase 1 · 0→517,conversion_cars_h,N/A
+Pre-Phase 1 · 0→517,retries,76
+Pre-Phase 1 · 0→517,crashes,2
+Pre-Phase 1 · 0→517,fpy_percent,96.71179883945841
+Pre-Phase 1 · 0→517,final_credits,N/A
+Pre-Phase 1 · 0→517,final_sp,N/A
+Pre-Phase 1 · 0→517,remaining_mad_mikes,N/A
+Phase 1 · restart from 333,cars,1398
+Phase 1 · restart from 333,farm_runs,116
+Phase 1 · restart from 333,active_hours,54.718423333333234
+Phase 1 · restart from 333,wall_hours,N/A
+Phase 1 · restart from 333,farm_active_hours,25.547551666666767
+Phase 1 · restart from 333,retained_sp,28534
+Phase 1 · restart from 333,cycle_p50_s,47.367499999993015
+Phase 1 · restart from 333,cycle_p90_s,58.6917999999976
+Phase 1 · restart from 333,cycle_p99_s,83.46317000000205
+Phase 1 · restart from 333,sw_active_h,25.54898176586111
+Phase 1 · restart from 333,sw_wall_h,N/A
+Phase 1 · restart from 333,farm_sp_h,1116.8976335697093
+Phase 1 · restart from 333,farm_cars_h,53.18560159855759
+Phase 1 · restart from 333,conversion_cars_h,N/A
+Phase 1 · restart from 333,retries,1744
+Phase 1 · restart from 333,crashes,20
+Phase 1 · restart from 333,fpy_percent,95.92274678111588
+Phase 1 · restart from 333,final_credits,N/A
+Phase 1 · restart from 333,final_sp,N/A
+Phase 1 · restart from 333,remaining_mad_mikes,N/A
+Phase 2 · credit exhaustion,cars,1337
+Phase 2 · credit exhaustion,farm_runs,112
+Phase 2 · credit exhaustion,active_hours,46.64553916666673
+Phase 2 · credit exhaustion,wall_hours,61.344166666666666
+Phase 2 · credit exhaustion,farm_active_hours,27.696640833333333
+Phase 2 · credit exhaustion,retained_sp,28700
+Phase 2 · credit exhaustion,cycle_p50_s,45.625
+Phase 2 · credit exhaustion,cycle_p90_s,54.63780000000261
+Phase 2 · credit exhaustion,cycle_p99_s,59.00739999999642
+Phase 2 · credit exhaustion,sw_active_h,28.66297665083976
+Phase 2 · credit exhaustion,sw_wall_h,21.795063371958758
+Phase 2 · credit exhaustion,farm_sp_h,1036.2267457885762
+Phase 2 · credit exhaustion,farm_cars_h,49.344130751836964
+Phase 2 · credit exhaustion,conversion_cars_h,63.19102464787363
+Phase 2 · credit exhaustion,retries,306
+Phase 2 · credit exhaustion,crashes,7
+Phase 2 · credit exhaustion,fpy_percent,97.23261032161555
+Phase 2 · credit exhaustion,final_credits,42170
+Phase 2 · credit exhaustion,final_sp,999
+Phase 2 · credit exhaustion,remaining_mad_mikes,0

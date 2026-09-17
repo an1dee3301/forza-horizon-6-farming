@@ -327,10 +327,110 @@ Broad counters: **306 retries**, **7 crashes**, **97.23% first-pass yield**.
 
 Raw purchases, mastery rewards, cycle rows, farm pre/post SP, terminal SP, credit reads, and zero-car cleanup are directly recorded. Rates and percentiles are derived. Historical wall time, final credits, final SP, and final garage state are **N/A** for Pre-Phase 1 because cohort-specific terminal proof was not preserved. Phase 2 goal-active time is the persisted mission counter; asynchronous category timers have different scopes and are not summed into it.
 
+## Appendix A — complete cohort metrics
+
+| Metric | Pre-Phase 1 | Phase 1 | Phase 2 | Combined / final |
+|---|---:|---:|---:|---:|
+| Cars and verified rewards | 517 | 1,398 | 1,337 | **3,252** |
+| Farm runs | 35 | 116 | 112 | **263** |
+| Recorded active hours | 19.256 | 54.718 | 46.646 | **120.620** |
+| Recorded farm hours | 10.393 | 25.548 | 27.697 | **63.637** |
+| Recorded retained SP | 11,600 | 28,534 | 28,700 | **68,834** |
+| Retained SP / farm hour | 1,116.18 | **1,116.90** | 1,036.23 | **1,081.67 weighted** |
+| Farm-supported cars / hour | 53.15 | **53.19** | 49.34 | **51.51 weighted** |
+| Conversion capacity | 61.92 cars/h | **64.48 cars/h** | 63.19 cars/h | N/A |
+| SW / active hour | 26.85 | 25.55 | **28.66** | **26.96 weighted** |
+| SW / wall hour | N/A | N/A | 21.80 | N/A |
+| First-pass yield | 96.71% | 95.92% | **97.23%** | **96.59% weighted** |
+| Broad retries | 76 | 1,744 | 306 | **2,126** |
+| Retries / 1,000 cars | **147.0** | 1,247.5 | 228.9 | **653.8** |
+| Crashes | 2 | 20 | 7 | **29** |
+| Crashes / 1,000 cars | **3.87** | 14.31 | 5.24 | **8.92** |
+| Recovery hours | 0.234 | 7.329 | 1.222 | **8.786** |
+| Gross Mazda spend | 49,115,000 CR | 132,810,000 CR | 127,015,000 CR | **308,940,000 CR** |
+| Terminal credits | N/A | 87,720 CR | 42,170 CR | **42,170 CR final** |
+| Terminal SP | N/A | 39 | 999 | **999 final** |
+| Mad Mikes remaining | N/A | 0 verified | 0 verified | **0 verified final** |
+
+`Combined / final` is a sum, weighted rate, or last verified state as named. A wall-throughput total is not reported because cohort-specific wall boundaries were not preserved for the first two cohorts.
+
+## Appendix B — every conversion stage
+
+| Cohort | Stage | n | P50 | P90 | P99 | Mean |
+|---|---|---:|---:|---:|---:|---:|
+| Pre-Phase 1 | Collection | 517 | 0.469s | 0.516s | 0.594s | 0.478s |
+| Pre-Phase 1 | Buy | 517 | 6.907s | 7.359s | 17.024s | 6.957s |
+| Pre-Phase 1 | Bought transition | 517 | 1.266s | 1.313s | 1.344s | 1.209s |
+| Pre-Phase 1 | Choose newest | 517 | 24.031s | 29.984s | 35.844s | 25.329s |
+| Pre-Phase 1 | Open mastery | 512 | 3.313s | 3.623s | 13.443s | 3.479s |
+| Pre-Phase 1 | Mastery path | 517 | 8.375s | 8.585s | 8.995s | 8.401s |
+| Pre-Phase 1 | Return | 517 | 11.468s | 12.444s | 16.568s | 11.766s |
+| Phase 1 | Collection | 1,398 | 0.063s | 0.125s | 0.687s | 0.148s |
+| Phase 1 | Buy | 1,398 | 4.031s | 5.594s | 14.563s | 5.229s |
+| Phase 1 | Bought transition | 1,398 | 0.985s | 1.125s | 1.218s | 0.957s |
+| Phase 1 | Choose newest | 1,398 | 21.157s | 29.041s | 34.253s | 23.450s |
+| Phase 1 | Open mastery | 1,394 | 3.438s | 3.807s | 14.940s | 4.022s |
+| Phase 1 | Mastery path | 1,398 | 7.312s | 11.463s | 11.672s | 8.353s |
+| Phase 1 | Return | 1,398 | 9.719s | 12.875s | 23.336s | 10.465s |
+| Phase 2 | Collection | 1,337 | 0.062s | 0.125s | 0.766s | 0.136s |
+| Phase 2 | Buy | 1,337 | 3.828s | 4.437s | 13.304s | 4.220s |
+| Phase 2 | Bought transition | 1,337 | 0.875s | 1.047s | 1.151s | 0.884s |
+| Phase 2 | Choose newest | 1,337 | 20.906s | 26.012s | 32.469s | 21.741s |
+| Phase 2 | Open mastery | 1,335 | 3.187s | 3.563s | 14.515s | 3.469s |
+| Phase 2 | Mastery path | 1,337 | 6.860s | 7.125s | 7.281s | 6.900s |
+| Phase 2 | Return | 1,337 | 9.328s | 9.891s | 10.368s | 9.405s |
+
+Choose-newest remained the largest stage in every cohort. From Pre-Phase 1 to Phase 2, its P50 fell **13.0%**, while mastery P50 fell **18.1%**, return P50 fell **18.7%**, and buy P50 fell **44.6%**.
+
+## Appendix C — phase-to-phase deltas
+
+| Metric | Pre-P1 → Phase 1 | Phase 1 → Phase 2 | Pre-P1 → Phase 2 |
+|---|---:|---:|---:|
+| Cycle P50 improvement | +15.56% | +3.68% | **+18.66%** |
+| Cycle P90 improvement | +7.76% | +6.91% | **+14.13%** |
+| Cycle P99 improvement | −15.35% | **+29.30%** | +18.45% |
+| Active SW/h change | −4.84% | **+12.19%** | +6.76% |
+| Farm SP/h change | +0.06% | **−7.22%** | −7.16% |
+| First-pass yield change | −0.79 pp | **+1.31 pp** | +0.52 pp |
+| Retry incidence change | −748.6% | **+81.65%** | −55.7% |
+| Crash incidence change | −269.8% | **+63.39%** | −35.4% |
+
+For retry and crash incidence, positive improvement means fewer events. Negative values show that Phase 1 regressed against Pre-Phase 1 before Phase 2 recovered most of the loss.
+
+## Appendix D — inventory and finance checkpoints
+
+| Checkpoint | Saved SW | WS | Credits | SP | Account state |
+|---|---:|---:|---:|---:|---|
+| Pre-Phase 1 start | 0 | N/A | N/A | 12 inferred | Initial production run |
+| Pre-Phase 1 finish | 517 | N/A | 92,352,392 CR first reliable read | 755 | 517 rewards completed |
+| Phase 1 start | 333 | N/A | 122,277,466 CR | 863 verified | 184 known SW used between phases |
+| Phase 1 finish | 1,680 hybrid | 219 | 87,720 CR | 39 | Zero Mad Mikes verified |
+| Phase 2 start | 1,200 counted baseline | N/A | 120,157,670 CR | N/A | New credit-exhaustion mission |
+| Phase 2 finish | 2,506 hybrid | 230 | 42,170 CR | 999 | Zero Mad Mikes verified |
+
+The saved-inventory checkpoints cannot be summed because wheelspins were used between and during missions. Verified mastery rewards are the additive production measure.
+
+## Appendix E — evidence coverage
+
+| Field | Pre-Phase 1 | Phase 1 | Phase 2 |
+|---|---|---|---|
+| Individual cycle durations | Complete | Complete | Complete |
+| Stage P50/P90/P99 | Complete | Complete | Complete |
+| Farm pre/post SP | Aggregate retained total | Complete rows | Complete rows |
+| Cohort active time | Complete | Complete | Persisted mission counter |
+| Cohort wall time | N/A | N/A | Complete |
+| Credit opening and close | Opening N/A; first close read available | Complete bridge | Complete bridge |
+| Failure taxonomy | Limited | Partial after instrumentation | Partial; broad counters complete |
+| Removal events | Partial | Partial | 1,330 rows plus terminal zero proof |
+| Final garage proof | N/A for cohort boundary | Verified zero | Verified zero |
+| Direct saved-inventory reads | Final checkpoint | Final plus hybrid correction | Final plus hybrid correction |
+
 ## Consolidated evidence files
 
 - [`reviewed_snapshot.json`](reviewed_snapshot.json) — combined source snapshot for all three phases
 - [`data/all_phase_comparison.csv`](data/all_phase_comparison.csv) — one row per cohort
+- [`data/all_phase_metrics_long.csv`](data/all_phase_metrics_long.csv) — tidy metric/value export for every cohort
+- [`data/all_phase_stage_percentiles.csv`](data/all_phase_stage_percentiles.csv) — all 21 cohort-stage rows
 - [`data/phase_summary.csv`](data/phase_summary.csv) — original Pre-Phase 1 and Phase 1 summary
 - [`data/stage_percentiles.csv`](data/stage_percentiles.csv) — Pre-Phase 1 and Phase 1 stage distributions
 - [`data/phase2_stage_percentiles.csv`](data/phase2_stage_percentiles.csv) — Phase 2 stage distributions

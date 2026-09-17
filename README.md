@@ -88,14 +88,22 @@ The operation contains three measured cohorts. The README keeps only the compari
 |---|---:|---:|---:|
 | Cars / new Super Wheelspins | 517 | 1,398 | 1,337 |
 | Farm runs | 35 | 116 | 112 |
+| Recorded active time | 19.26h | 54.72h | 46.65h |
+| Recorded farm time | 10.39h | 25.55h | 27.70h |
+| Retained farm SP | 11,600 | 28,534 | 28,700 |
 | Cycle P50 | 56.09s | 47.37s | **45.62s** |
 | Cycle P90 | 63.63s | 58.69s | **54.64s** |
 | Cycle P99 | 72.35s | 83.46s | **59.01s** |
 | SW / active hour | 26.85 | 25.55 | **28.66** |
 | Retained SP / farm hour | 1,116 | **1,117** | 1,036 |
+| Farm-supported cars / hour | 53.15 | **53.19** | 49.34 |
+| Conversion capacity | 61.92 cars/h | **64.48 cars/h** | 63.19 cars/h |
 | First-pass yield | 96.71% | 95.92% | **97.23%** |
+| Broad retries | **76** | 1,744 | 306 |
 | Retries / 1,000 cars | **147.0** | 1,247.5 | 228.9 |
+| Crashes | **2** | 20 | 7 |
 | Crashes / 1,000 cars | **3.87** | 14.31 | 5.24 |
+| Gross Mazda spend | 49.12M CR | 132.81M CR | 127.02M CR |
 
 Phase 2 was the strongest conversion and recovery cohort: versus Phase 1, P50 improved **3.68%**, P90 **6.91%**, P99 **29.30%**, and active reward throughput **12.19%**. SP farming fell **7.22%**, leaving farm output as the main remaining bottleneck.
 
