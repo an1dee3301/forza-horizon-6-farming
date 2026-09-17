@@ -126,7 +126,9 @@ def plan(before, target, farms, duration=900, share_code=MEGA, *, reserve_sp=0):
     # is an engineering guard, not a bound on unobserved bursts or loading.
     guard_seconds, guard_sp = 2, 2
     cap_seconds = max(0, floor((headroom - guard_sp) / max(rates) - guard_seconds))
-    seconds = min(duration, 600, max(60, ceil((needed + guard_sp) / min(rates))), cap_seconds)
+    # Headroom already bounds the exit. An additional ten-minute ceiling
+    # caused split top-ups even when a longer single run safely fit the estimate.
+    seconds = min(duration, max(60, ceil((needed + guard_sp) / min(rates))), cap_seconds)
     deadline_basis = 'native_natural_rate_estimate'
     top_up_rate = result['estimated_sp_per_second']
 

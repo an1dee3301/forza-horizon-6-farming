@@ -19,10 +19,17 @@ SP_LABEL = re.compile(r'([0-9]{1,3})\s+Skill\s+Points\s+Available', re.IGNORECAS
 
 
 def read_tab_sp(reader, obs, gamertag):
-    """Exact 0..99 Cars badge on any complete pause tab; 99+ is not a balance."""
+    """Exact 0..99 Cars badge on a complete native tab row.
+
+    The same account-bound tab row exists both outside and inside the house.
+    Screen classification is deliberately limited to those native menus; the
+    complete ordered row, selected Cars tab, footer, account, color mask and
+    independent enlarged OCR must all agree.  ``99+`` stays unusable.
+    """
     from .pause_tabs import pause_tab_steps
     frame = getattr(obs, 'frame', None)
-    if (frame is None or frame.shape != (1080,1920,3) or obs.screen != 'pause_menu'
+    if (frame is None or frame.shape != (1080,1920,3)
+            or obs.screen not in {'pause_menu','campaign','cars','home_tab'}
             or not isinstance(gamertag,str) or not gamertag.strip()
             or pause_tab_steps(obs,'CARS') is None):
         return None

@@ -74,12 +74,13 @@ class Production:
     def credit_limited(self):
         return self.goal.data.get('credit_limited') is True
 
-    def credit_budget(self):
+    def credit_budget(self, *, force=False, full_header=False):
         from .credit_limit import CreditLimit
         if self.credit_budgeter is None:
             self.credit_budgeter = CreditLimit(self.goal.path.parent/'account_observed.json')
         proof = self.boundary('credit_check',lambda:
-            self.credit_budgeter.budget(self.nav, self.goal.data, self.cars.data, self.ledger))
+            self.credit_budgeter.budget(self.nav, self.goal.data, self.cars.data, self.ledger,
+                                        force=force, full_header=full_header))
         self.goal.save(credit_budget=proof,
                        limit=self.goal.data['rewards'] + proof['affordable_purchases'])
         return proof
@@ -92,6 +93,8 @@ class Production:
     def intermediate_mega_refill(self, challenge_data):
         """True after a completed Mega run when another farm run is still required."""
         g=self.goal.data
+        if g.get('rewards', 0) != g.get('challenge_sp_rewards', 0):
+            return False
         if (g.get('phase') not in {'inspect_sp','farm'} or not isinstance(challenge_data,dict)
                 or challenge_data.get('phase')!='complete'
                 or challenge_data.get('share_code')!='155439962'
@@ -109,6 +112,8 @@ class Production:
     def completed_challenge_sp(self, challenge_data):
         """Reuse the challenge module's already twice-read post-run SP proof."""
         g=self.goal.data
+        if g.get('rewards', 0) != g.get('challenge_sp_rewards', 0):
+            return None
         if (not isinstance(challenge_data,dict)
                 or challenge_data.get('phase')!='complete'
                 or challenge_data.get('id')!=f"{g.get('id')}_{g.get('farm_runs',0)-1}"):
@@ -127,20 +132,95 @@ class Production:
         its normal setup sequence instead of entering a retry loop here.
         """
         last=getattr(self.nav,'last',None)
-        return (self.goal.data.get('phase')=='farm' and
+        # A completed conversion batch also leaves the final car on this
+        # screen while the goal checkpoint is ``inspect_sp``. A worker reload
+        # at that exact unpaid boundary must be allowed to read the visible SP
+        # balance and continue into farming; inventory and credit are still
+        # refreshed before the next purchase.
+        return (self.goal.data.get('phase') in {'inspect_sp','farm'} and
                 getattr(last,'screen',None) in {'mad_mike_mastery','car_mastery'})
 
     def finish_credit_limit(self, proof):
-        from .credit_limit import PRICE, pending_copy
+        from .credit_limit import PRICE, SOURCE, CreditProofUnavailable, pending_copy
         self.nav.check()
         self.ledger.ready()
         if (proof['observed_credits'] >= PRICE or proof['purchases_after_observation']
                 or pending_copy(self.cars.data, self.ledger)):
             raise RuntimeError('Credit exhaustion has not been confirmed; no completion inferred')
-        self.goal.save(phase='garage_cleanup', completed=self.goal.data['rewards'],
+        # Terminal exhaustion needs three separately keyed fresh reads.  The
+        # two extra reads force the full account header route, while
+        # verified_budget independently checks the exact purchase ledger
+        # against the previously accepted balance.  A stable OCR truncation
+        # therefore cannot terminate the mission.
+        confirmations = [proof]
+        for _ in range(2):
+            confirmations.append(self.credit_budget(force=True, full_header=True))
+        if (any(p.get('observed_credits') != proof['observed_credits'] or
+                p.get('observed_credits', PRICE) >= PRICE or
+                p.get('purchases_after_observation') or p.get('source') != SOURCE
+                for p in confirmations) or
+                len({p.get('credits_event') for p in confirmations}) != 3 or
+                None in {p.get('credits_event') for p in confirmations}):
+            raise CreditProofUnavailable(
+                'Three independent full-header credit checks did not agree; mission remains active')
+        proof = dict(confirmations[-1], terminal_confirmation_count=3,
+                     terminal_confirmation_events=[p['credits_event'] for p in confirmations])
+        self.goal.save(phase='terminal_sp_topup', completed=self.goal.data['rewards'],
                        end_reason='insufficient_credits', credit_budget=proof,
                        limit=self.goal.data['rewards'], batch=None, reservation=None)
-        self.emit('status', f"Credit limit reached — {proof['observed_credits']:,} CR remain; removing all Mad Mike cars")
+        self.emit('status', f"Credit limit reached — {proof['observed_credits']:,} CR remain; topping SP up to 999 before final cleanup")
+
+    def terminal_sp_topup(self):
+        """Reach a verified 999 SP after the last paid car, then allow cleanup.
+
+        This is a crash-resumable terminal phase.  It never authorizes another
+        purchase and retains the normal challenge identity/checkpoint rules.
+        """
+        self.nav.check()
+        run_number = self.goal.data.get('terminal_sp_runs', 0)
+        if type(run_number) is not int or run_number < 0:
+            raise RuntimeError('Terminal SP top-up checkpoint is invalid')
+        identifier = f"{self.goal.data['id']}_terminal_sp_{run_number}"
+        saved = getattr(self.challenge, 'data', {})
+        resumable = (isinstance(saved, dict) and saved.get('id') == identifier
+                     and saved.get('phase') not in {None, 'complete'})
+        completed = (isinstance(saved, dict) and saved.get('id') == identifier
+                     and saved.get('phase') == 'complete'
+                     and type(saved.get('after_sp')) is int)
+        if completed:
+            points = saved['after_sp']
+            self.emit('log', f'Reusing terminal challenge exit SP proof ({points}).')
+        elif resumable:
+            points = None
+        else:
+            points = self.boundary('terminal_sp_read', self.nav.available_sp)
+        if points == 999:
+            self.goal.save(phase='garage_cleanup', last_sp=999,
+                           terminal_sp_completed_at=datetime.now().isoformat(timespec='seconds'))
+            self.emit('status', 'Terminal reserve verified at 999 SP; removing all Mad Mike cars')
+            return
+        if points is not None and (type(points) is not int or not 0 <= points < 999):
+            raise RuntimeError('Terminal SP balance is invalid; cleanup remains blocked')
+        self.emit('stage', 'terminal_sp_topup')
+        self.emit('status', f'Terminal SP top-up — {points if points is not None else "resuming"}/999 verified')
+        self.challenge.target_sp = 999
+        self.challenge.reserve_sp = 0
+        self.challenge.force_target_sp = True
+        try:
+            points = self.challenge.run(identifier, return_collection=False)
+        finally:
+            self.challenge.force_target_sp = False
+        if type(points) is not int or not 0 <= points <= 999:
+            raise RuntimeError('Terminal challenge returned no valid SP proof')
+        changes = dict(last_sp=points, sp_observed_at=datetime.now().isoformat(timespec='seconds'))
+        if not completed:
+            changes.update(farm_runs=self.goal.data.get('farm_runs', 0)+1,
+                           terminal_sp_runs=run_number+1)
+        if points == 999:
+            changes.update(phase='garage_cleanup',
+                           terminal_sp_completed_at=datetime.now().isoformat(timespec='seconds'))
+            self.emit('status', 'Terminal reserve verified at 999 SP; removing all Mad Mike cars')
+        self.goal.save(**changes)
 
     def cleanup_credit_limit(self):
         """Remove every Mad Mike after the final affordable conversion."""
@@ -157,6 +237,25 @@ class Production:
                 GarageCleanup(self.nav, Tracker(), emit=self.emit).run(reset_filter_state=True))
         self.goal.save(phase='complete', completed=self.goal.data['rewards'])
         self.emit('status', f'Credit limit reached; garage verified empty after removing {removed:,} Mad Mike cars in the final pass')
+        self.progress()
+
+    def cleanup_periodic(self):
+        """Keep the cleanup checkpoint pending until the garage is verified empty."""
+        from .credit_limit import pending_copy
+        self.nav.check()
+        self.ledger.ready()
+        if self.goal.data.get('batch') or pending_copy(self.cars.data, self.ledger):
+            raise RuntimeError('Periodic cleanup cannot remove an unfinished purchased copy')
+        if self.terminal_cleaner is None:
+            raise RuntimeError('Periodic cleanup requires the verified garage cleanup module')
+        self.emit('stage', 'garage_cleanup')
+        self.emit('status', 'Cleanup threshold reached — removing processed Mad Mike cars')
+        removed = self.boundary('periodic_garage_cleanup',
+            lambda: self.terminal_cleaner(self.nav, self.emit))
+        self.goal.save(phase='inspect_sp', batches_since_cleanup=0,
+            cleanup_rewards_baseline=self.goal.data['rewards'],
+            periodic_cleanups=self.goal.data.get('periodic_cleanups', 0)+1,
+            last_cleanup_removed=removed)
         self.progress()
 
     def progress(self):
@@ -251,15 +350,49 @@ class Production:
         # The new goal owns the remaining target; the old history is retained.
         if self.cars.data['phase'] != 'complete':
             self.cars.save(phase='complete', end_reason='transferred_to_wheelspin_goal')
-        self.goal.save(phase='inspect_sp', batch=None, completed=self.goal.data['rewards'])
+        batches = self.goal.data.get('batches_since_cleanup', 0)
+        if self.cars.data['completed'] >= stop_at:
+            batches += 1
+        interval = self.goal.data.get('cleanup_every_batches', 0)
+        cleanup_due = type(interval) is int and interval > 0 and batches >= interval
+        car_interval = self.goal.data.get('cleanup_every_cars', 0)
+        if type(car_interval) is int and car_interval > 0:
+            cleanup_due = (self.goal.data['rewards'] -
+                self.goal.data.get('cleanup_rewards_baseline', 0)) >= car_interval
+        self.goal.save(phase='periodic_cleanup' if cleanup_due else 'inspect_sp',
+                       batches_since_cleanup=batches, batch=None,
+                       completed=self.goal.data['rewards'])
         if unpaid_zero:
             self.finish_credit_limit(proof)
 
     def run(self):
         g = self.goal
+        # A terminal SP challenge can award credits after the three low-credit
+        # checks that started shutdown.  Reopening a completed credit mission
+        # is allowed only after a fresh full-header proof shows that another
+        # exact 95,000-CR Mazda is now affordable.  This prevents both a stale
+        # low OCR stop and silently leaving newly awarded credits unused.
+        if (self.credit_limited and g.data.get('phase') == 'complete'
+                and g.data.get('end_reason') == 'insufficient_credits'):
+            proof = self.credit_budget(force=True, full_header=True)
+            if proof['affordable_purchases']:
+                g.save(phase='inspect_sp', batch=None, reservation=None,
+                       credit_budget=proof,
+                       limit=g.data['rewards'] + proof['affordable_purchases'],
+                       reopened_after_credit_gain_at=datetime.now().isoformat(timespec='seconds'))
+                self.emit('status',
+                    f"Fresh credits fund {proof['affordable_purchases']} more Mazda; resuming production")
+            else:
+                return
         while g.data['phase'] != 'complete':
             self.nav.check()
             self.progress()
+            if g.data['phase'] == 'periodic_cleanup':
+                self.cleanup_periodic()
+                continue
+            if g.data['phase'] == 'terminal_sp_topup':
+                self.terminal_sp_topup()
+                continue
             if g.data['phase'] == 'garage_cleanup':
                 self.cleanup_credit_limit()
                 continue
@@ -284,7 +417,7 @@ class Production:
             intermediate_refill=self.intermediate_mega_refill(challenge_data)
             mastery_handoff=self.mastery_balance_handoff()
             if mastery_handoff:
-                self.emit('log','Verified SP mastery screen handed directly to farm setup; inventory and credit checks are deferred to the next unpaid purchase boundary.')
+                self.emit('log','Verified SP mastery screen handed directly to SP read / farm setup; inventory and credit checks are deferred to the next unpaid purchase boundary.')
             if not farm_in_progress and not intermediate_refill and not mastery_handoff:
                 self.refresh_inventory(stay_pause=True)
             if self.credit_limited:
@@ -314,6 +447,7 @@ class Production:
                     continue
                 trial.completed(self.challenge)
                 g.save(phase='inspect_sp', farm_runs=g.data['farm_runs']+1, last_sp=points,
+                       challenge_sp_rewards=g.data['rewards'],
                        sp_observed_at=datetime.now().isoformat(timespec='seconds'),
                        final_top_up=getattr(self.challenge,'data',{}).get('exit_reason')=='intentional_target_top_up')
                 continue
@@ -345,6 +479,14 @@ class Production:
                 self.emit('log', f'Refill toward {refill_target(g.data["limit"]-g.data["rewards"],g.data["reserve_sp"])} SP: verified {points}. No new car batch yet.')
                 g.save(phase='farm')
                 continue
+            car_interval = g.data.get('cleanup_every_cars', 0)
+            if type(car_interval) is int and car_interval > 0:
+                until_cleanup = car_interval - (g.data['rewards'] -
+                    g.data.get('cleanup_rewards_baseline', 0))
+                if until_cleanup <= 0:
+                    g.save(phase='periodic_cleanup')
+                    continue
+                count = min(count, until_cleanup)
             self.boundary('farm_to_collection',self.nav.return_collection)
             self.emit('refill_ready',dict(after_sp=points,cars=count))
             g.save(final_top_up=False)

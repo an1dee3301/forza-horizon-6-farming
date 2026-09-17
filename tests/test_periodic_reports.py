@@ -12,6 +12,30 @@ from fh6.operations_metrics import summarize
 
 
 class PeriodicReports(unittest.TestCase):
+    def test_active_farm_report_captures_fresh_challenge_instead_of_old_home(self):
+        with tempfile.TemporaryDirectory() as folder:
+            data = snapshot(Path(folder), active=True, game='running')
+            data.update(goal_id='mission', earned=50, farm_event={
+                'key':'mission_8:2', 'id':'mission_8', 'attempt':2,
+                'share_code':'155439962', 'timer':'Farming SP — 04:12 remaining'})
+            captured = '2026-09-16T12:00:00+00:00'
+            with patch('fh6.discord_reports.RUNS', Path(folder)), \
+                 patch('fh6.discord_reports.STATE', Path(folder)/'delivery.json'), \
+                 patch('fh6.report_images.capture_active_challenge', return_value='frame') as capture, \
+                 patch('fh6.report_images.store_farm_frame', return_value=(b'fresh farm', captured)) as store, \
+                 patch('fh6.report_images.evidence') as home, \
+                 patch('fh6.discord_reports.secrets.webhook', return_value='private'), \
+                 patch('fh6.discord_reports.send', return_value={'message_id':'confirmed'}) as send:
+                self.assertEqual(deliver(data, periodic=True)['message_id'], 'confirmed')
+                capture.assert_called_once_with('mission', data['farm_event'])
+                store.assert_called_once()
+                home.assert_not_called()
+                sent = send.call_args.args[1]
+                self.assertEqual(send.call_args.kwargs['game_image'], (b'fresh farm', captured))
+                self.assertEqual(sent['game_capture']['screen'], 'farm_drive')
+                self.assertEqual(sent['game_capture']['challenge_key'], 'mission_8:2')
+                self.assertEqual(sent['game_capture']['capture_policy'], 'active_challenge_v1')
+
     def test_periodic_photo_uses_approved_source_metadata_not_latest_worker_cache(self):
         with tempfile.TemporaryDirectory() as folder:
             data = snapshot(Path(folder), active=True, game='running')
@@ -57,7 +81,7 @@ class PeriodicReports(unittest.TestCase):
                 self.assertEqual(send.call_args.args[1]['report_kind'], 'status')
                 self.assertIsNone(send.call_args.kwargs['game_image'])
                 body = payload(send.call_args.args[1])
-                self.assertIn('MINUTE STATUS', body['embeds'][0]['title'])
+                self.assertIn('LIVE STATUS', body['embeds'][0]['title'])
                 self.assertTrue(all(not f['inline'] for f in body['embeds'][0]['fields']))
                 self.assertEqual(body['allowed_mentions'], {'parse': []})
 

@@ -5,7 +5,7 @@
   "manufacturer": "SUBARU",
   "year": "1998",
   "duration_seconds": 900,
-  "movement_interval": 210,
+  "movement_interval": 240,
   "accelerator": "w",
   "movement_key": "a",
   "movement_seconds": 0.15,

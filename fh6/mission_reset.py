@@ -41,6 +41,8 @@ def reset_target(target, deadline_utc=None):
             temp = challenge.with_suffix('.tmp')
             temp.write_text(json.dumps(data, indent=2), encoding='utf-8')
             temp.replace(challenge)
+        # The archived credit-limited mission must not intercept a fresh start.
+        goal.data.pop('credit_limited', None)
         goal.start_goal(target)
         goal.save(original_deadline_utc=deadline_utc, baseline_rewards=0,
                   reset_archive=str(archive), end_at_deadline=False, run_until_target=True)

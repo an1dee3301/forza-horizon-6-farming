@@ -16,12 +16,17 @@ def pause_ready(nav,obs):
 
 
 def owned_signature(nav,obs):
-    """Prove the native owned-property interaction, not a Return Home tile."""
+    """Prove the native house entrance interaction, not a Return Home tile.
+
+    The game does not render the separate ``OWNED`` caption consistently when
+    challenge exit leaves the car directly on the property trigger.  ``Enter
+    House`` plus the free-roam ANNA footer is already the actionable location
+    proof; an unowned property says ``Buy House`` and remains rejected below.
+    """
     if obs.screen!='unknown' or not nav.is_roam(obs) or nav.is_pause(obs):
         return None
     doc=obs.doc
-    fields=(doc.find('Owned',(60,300,600,240)),
-            doc.find('Enter House',(60,480,620,150),contains=True),
+    fields=(doc.find('Enter House',(60,480,620,150),contains=True),
             doc.find('ANNA',(60,965,1800,100),contains=True))
     if not all(len(matches)==1 for matches in fields):
         return None

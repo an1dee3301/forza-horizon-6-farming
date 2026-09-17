@@ -1,0 +1,247 @@
+{
+  "goal_id": "20260915_105105_830001",
+  "completed_at": "2026-09-17T20:39:31+09:00",
+  "completion_evidence": {
+    "rewards": 1281,
+    "cars_bought": 1281,
+    "phase": "complete",
+    "final_credits": 11170,
+    "credits_verified_at": "2026-09-17T11:40:12+00:00",
+    "final_sp": 999,
+    "sp_verified_at": "2026-09-17T20:20:41",
+    "mad_mike_remaining": 0,
+    "garage_verified_empty": true
+  },
+  "inventory": {
+    "super_wheelspins": 2482,
+    "wheelspins": 221,
+    "actual_super_wheelspins_at_last_home_sync": 2481,
+    "verified_rewards_after_sync": 1
+  },
+  "account": {
+    "gamertag": "aichan3301",
+    "level": 278,
+    "prestige": 6,
+    "opening_credits": 120157670,
+    "final_credits": 11170,
+    "gross_mazda_spend": 121695000,
+    "reconciled_other_inflow": 1548500
+  },
+  "timing": {
+    "wall_hours": 57.80722222222222,
+    "goal_active_hours": 46.33375527777784,
+    "farm_active_hours": 26.342608333333345,
+    "conversion_recorded_hours": 20.232330555555585,
+    "sw_per_active_hour": 27.647230238952403,
+    "sw_per_wall_hour": 22.15986084014877
+  },
+  "conversion": {
+    "cycle_percentiles_seconds": {
+      "n": 1281,
+      "p50": 45.437999999994645,
+      "p90": 54.328000000008615,
+      "p99": 58.95900000000257,
+      "mean": 46.76095081967207
+    },
+    "latest20_percentiles_seconds": {
+      "n": 20,
+      "p50": 46.55450000001292,
+      "p90": 56.049699999997394,
+      "p99": 57.8802100000059,
+      "mean": 48.679700000000594
+    },
+    "first_pass_yield_percent": 97.11163153786104,
+    "cars_per_recorded_conversion_hour": 63.31450529055591,
+    "stage_percentiles_seconds": [
+      {
+        "stage": "collection",
+        "n": 1281,
+        "p50": 0.062000000005355105,
+        "p90": 0.125,
+        "p99": 0.7652000000060071,
+        "mean": 0.1359492583922774
+      },
+      {
+        "stage": "buy",
+        "n": 1281,
+        "p50": 3.7969999999913853,
+        "p90": 4.436999999990803,
+        "p99": 13.255999999996861,
+        "mean": 4.208785323965264
+      },
+      {
+        "stage": "bought",
+        "n": 1281,
+        "p50": 0.860000000015134,
+        "p90": 1.0469999999913853,
+        "p99": 1.1280000000027945,
+        "mean": 0.8772404371585402
+      },
+      {
+        "stage": "choose",
+        "n": 1281,
+        "p50": 20.875,
+        "p90": 25.921999999991385,
+        "p99": 32.48140000001295,
+        "mean": 21.702161592505444
+      },
+      {
+        "stage": "open_mastery",
+        "n": 1279,
+        "p50": 3.1719999999913853,
+        "p90": 3.546999999997206,
+        "p99": 14.494339999998047,
+        "mean": 3.442586395621886
+      },
+      {
+        "stage": "mastery",
+        "n": 1281,
+        "p50": 6.85899999999674,
+        "p90": 7.10999999998603,
+        "p99": 7.269000000000234,
+        "mean": 6.891907884465199
+      },
+      {
+        "stage": "return",
+        "n": 1281,
+        "p50": 9.312999999994645,
+        "p90": 9.89000000001397,
+        "p99": 10.397200000006707,
+        "mean": 9.39525604996112
+      }
+    ]
+  },
+  "farming": {
+    "runs": 104,
+    "recorded_retained_sp": 27524,
+    "active_hours": 26.342608333333345,
+    "retained_sp_per_hour": 1044.8471788259383,
+    "cars_supported_per_hour": 49.75462756313992,
+    "run_groups": [
+      {
+        "run_type": "natural_completion",
+        "runs": 68,
+        "retained_sp": 19675,
+        "active_hours": 19.014349166666648,
+        "retained_sp_per_hour": 1034.7448565050818,
+        "cars_supported_per_hour": 49.27356459548008,
+        "drive_p50_seconds": 917.2104999999999,
+        "drive_p90_seconds": 917.3506
+      },
+      {
+        "run_type": "intentional_top_up",
+        "runs": 29,
+        "retained_sp": 6167,
+        "active_hours": 5.374860833333351,
+        "retained_sp_per_hour": 1147.378544529754,
+        "cars_supported_per_hour": 54.637073549035904,
+        "drive_p50_seconds": 700.266,
+        "drive_p90_seconds": 839.5455999999999
+      },
+      {
+        "run_type": "interrupted",
+        "runs": 7,
+        "retained_sp": 1682,
+        "active_hours": 1.9533983333333444,
+        "retained_sp_per_hour": 861.0634970337969,
+        "cars_supported_per_hour": 41.00302366827604,
+        "drive_p50_seconds": 917.226,
+        "drive_p90_seconds": 917.3135
+      }
+    ],
+    "estimated_cap_loss_sp": 34.678847801360334
+  },
+  "reliability": {
+    "broad_retries": 297,
+    "broad_crashes": 7,
+    "classified_failures": 42,
+    "classified_recovery_minutes": 15.775516666665135,
+    "failure_groups": [
+      {
+        "cause": "choose_timeout",
+        "events": 1,
+        "recovery_minutes": 0.4724000000001979,
+        "mean_cost_seconds": 28.344000000011874
+      },
+      {
+        "cause": "mastery_detection",
+        "events": 13,
+        "recovery_minutes": 3.1994833333330464,
+        "mean_cost_seconds": 14.766846153844828
+      },
+      {
+        "cause": "other",
+        "events": 27,
+        "recovery_minutes": 11.903883333331882,
+        "mean_cost_seconds": 26.453074074070848
+      },
+      {
+        "cause": "return_timeout",
+        "events": 1,
+        "recovery_minutes": 0.1997500000000097,
+        "mean_cost_seconds": 11.985000000000582
+      }
+    ]
+  },
+  "cleanup": {
+    "recorded_phase_2_removals": 1277,
+    "cars_bought": 1281,
+    "verified_remaining": 0
+  },
+  "phase_1_comparison": [
+    {
+      "metric": "Rewards",
+      "phase_1": 1915,
+      "phase_2": 1281,
+      "change_percent": null
+    },
+    {
+      "metric": "Cycle P50 (s)",
+      "phase_1": 47.367499999993015,
+      "phase_2": 45.437999999994645,
+      "change_percent": -4.07346809521012
+    },
+    {
+      "metric": "Cycle P90 (s)",
+      "phase_1": 58.6917999999976,
+      "phase_2": 54.328000000008615,
+      "change_percent": -7.435110185731508
+    },
+    {
+      "metric": "Cycle P99 (s)",
+      "phase_1": 83.46317000000205,
+      "phase_2": 58.95900000000257,
+      "change_percent": -29.35926109683934
+    },
+    {
+      "metric": "SW / active hour",
+      "phase_1": 25.88729734914642,
+      "phase_2": 27.647230238952403,
+      "change_percent": 6.798441977428027
+    },
+    {
+      "metric": "SW / wall hour",
+      "phase_1": 22.000887184020478,
+      "phase_2": 22.15986084014877,
+      "change_percent": 0.7225783887649717
+    },
+    {
+      "metric": "Crashes / 1,000 cars",
+      "phase_1": 11.488250652741515,
+      "phase_2": 5.46448087431694,
+      "change_percent": -52.43417784401391
+    },
+    {
+      "metric": "Retries / 1,000 cars",
+      "phase_1": 950.3916449086162,
+      "phase_2": 231.85011709601875,
+      "change_percent": -75.60478163522659
+    }
+  ],
+  "methods": {
+    "percentiles": "NumPy linear interpolation over individual observations.",
+    "inventory": "Last My Horizon actual read plus verified mastery rewards after that sync.",
+    "credits": "Fresh full-header matching read at terminal completion.",
+    "privacy": "Raw logs, screenshots, account identifiers beyond the displayed gamertag, and Discord secrets are excluded."
+  }
+}

@@ -85,8 +85,9 @@ def read_after_run(nav, profile):
         nav.ensure_home()
         return nav.available_sp()
     if nav.is_roam(obs):
-        nav.key('esc')
-        nav.until(nav.is_pause,'free-roam menu for SP check')
+        # Use the existing bounded reversible-Esc retry instead of waiting the
+        # full screen timeout when the first pulse lands during exit animation.
+        nav.open_pause_menu('free-roam menu for SP check')
     nav.pause_tab('CARS')
     from .farm_balance import read_tile_sp
     points=read_tile_sp(nav)

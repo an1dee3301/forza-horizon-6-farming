@@ -136,11 +136,15 @@ class GarageCleanup:
 
     def return_to_grid(self):
         """Cancel a saved No/action checkpoint without confirming removal."""
-        obs=self.nav.wait({'garage_grid','car_action','remove_confirmation','manufacturers'})
+        obs=self.nav.wait({'garage_grid','car_action','remove_confirmation','manufacturers','no_cars'})
         for _ in range(6):
             if obs.screen == 'garage_grid':
                 return obs
             previous=obs.screen
+            if obs.screen == 'no_cars':
+                self.nav.key('enter')
+                obs = self.nav.wait('garage_grid', previous='no_cars')
+                continue
             # This native destructive dialog intentionally ignores Escape.
             # Activate the freshly verified No row, then Escape the action menu.
             if obs.screen == 'remove_confirmation':
@@ -158,7 +162,7 @@ class GarageCleanup:
             except RuntimeError as exc:
                 if 'Timed out' not in str(exc):
                     raise
-                obs=self.nav.wait({'garage_grid','car_action','remove_confirmation'})
+                obs=self.nav.wait({'garage_grid','car_action','remove_confirmation','no_cars'})
         raise RuntimeError('Could not safely cancel the saved garage dialog')
 
     def disable_duplicates(self):
@@ -175,7 +179,10 @@ class GarageCleanup:
         self.nav.wait('garage_filter', predicate=lambda o:
             len(o.doc.find('Duplicates', FILTER_REGION)) == 1)
         self.nav.key('esc')
-        self.nav.wait('garage_grid', previous='garage_filter')
+        result = self.nav.wait({'garage_grid', 'no_cars'}, previous='garage_filter')
+        if result.screen == 'no_cars':
+            self.nav.key('enter')
+            self.nav.wait('garage_grid', previous='no_cars')
         self.tracker.event('garage_duplicates_disabled', {})
         self.emit('status', 'Duplicate filter cleared; removing the final Mad Mike copy')
         update_panel(self.tracker, 'Duplicate filter cleared; removing final Mad Mike')
@@ -186,9 +193,15 @@ class GarageCleanup:
         if reset_filter_state:
             # The caller has just rebuilt the exact filter from Reset, so an
             # earlier cleanup's final-copy state must not leak into this pass.
-            self.tracker.data.setdefault('garage_cleanup', {})['duplicates_disabled'] = False
+            self.tracker.data.setdefault('garage_cleanup', {})['duplicates_disabled'] = (
+                getattr(self.nav, 'cleanup_duplicates_disabled', False) is True)
         self.tracker.event('garage_cleanup_started', {'filter': FILTER_NAME})
         update_panel(self.tracker, 'Removing all Mad Mike cars; F7 cancels', force=True)
+        if getattr(self.nav, 'cleanup_verified_empty', False) is True:
+            self.tracker.event('garage_cleanup_completed', {'verified_empty': True})
+            update_panel(self.tracker, 'Mad Mike inventory verified: zero', force=True)
+            self.emit('status', 'All Mad Mike cars removed; both duplicate filter states are empty')
+            return 0
         final_filter = bool((self.tracker.data.get('garage_cleanup') or {}).get('duplicates_disabled'))
         removed = 0
         obs = self.nav.wait('garage_grid')

@@ -31,18 +31,18 @@ def collect(root, goal_id):
                 except (ValueError,TypeError):
                     continue
     cleanup = []
+    cleanup_total = 0
     cleanup_path = root/'analytics_garage_cleanup.jsonl'
     if cleanup_path.exists():
         with cleanup_path.open('rb') as stream:
-            size = stream.seek(0,2)
-            stream.seek(max(0,size-1_000_000))
-            if size > 1_000_000:
-                stream.readline()
             for line in stream:
                 try:
                     row = json.loads(line)
                     if isinstance(row,dict) and goal_id and row.get('goal_id') == goal_id:
-                        cleanup.append(row)
+                        count = row.get('count')
+                        if type(count) is int and count > 0:
+                            cleanup_total += count
+                            cleanup.append(dict(row,removed_total=cleanup_total))
                 except (ValueError,TypeError):
                     continue
     return dict(goal_id=goal_id, cycles=data.get('cycles', [])[-1000:],
@@ -50,6 +50,7 @@ def collect(root, goal_id):
                 progress=data.get('progress_points', [])[-10000:],
                 seconds=data.get('seconds', {}), account=account[-2000:],
                 garage_cleanup=cleanup[-2000:],
+                garage_cleanup_total=cleanup_total,
                 retries=data.get('retries',0), crashes=data.get('crashes',0))
 
 

@@ -113,6 +113,21 @@ def verified_budget(account, goal, cars, ledger, *, now=None, event=None, reques
             or (event is not None and credits_event != event)
             or (requested_at is not None and observed < requested_at)):
         return None
+    # A truncated OCR result can be perfectly repeatable (for example,
+    # 75,449,170 being read twice as 49,170).  Two matching frames alone are
+    # therefore insufficient for a terminal credit decision.  Compare every
+    # newer balance with the last accepted budget and the exact purchase
+    # ledger.  During automation, confirmed Mad Mike purchases are the only
+    # operation allowed to reduce credits; an unexplained larger drop is OCR
+    # evidence failure, never proof of exhaustion.
+    prior = goal.get('credit_budget') or {}
+    prior_observed = timestamp(prior.get('credits_observed_at'))
+    prior_credits = prior.get('observed_credits')
+    if (type(prior_credits) is int and prior_credits >= 0 and
+            prior_observed is not None and observed > prior_observed):
+        confirmed = committed_since(ledger, prior_observed)
+        if credits < max(0, prior_credits-confirmed*PRICE):
+            return None
     count = committed_since(ledger, observed)
     available = max(0, credits - count*PRICE)
     return dict(goal_id=goal['id'], gamertag=account['gamertag'], observed_credits=credits,
@@ -126,7 +141,7 @@ class CreditLimit:
     def __init__(self, path, *, now=utc_now, clock=time.monotonic, timeout=15):
         self.path, self.now, self.clock, self.timeout = Path(path), now, clock, timeout
 
-    def budget(self, nav, goal, cars, ledger, *, force=False):
+    def budget(self, nav, goal, cars, ledger, *, force=False, full_header=False):
         nav.check()
         ledger.ready()
         proof = verified_budget(read_json(self.path), goal, cars, ledger, now=self.now())
@@ -142,11 +157,20 @@ class CreditLimit:
         requested = self.now().replace(microsecond=0)
         observer.begin_event(event, 'Verified credit budget')
         obs = nav.observe()
-        if not observer.visible(obs):
+        # The compact account strip on pause repeatedly produced no usable
+        # balance (68 timeouts in the current operation). At an unpaid farm
+        # boundary, go straight to the full home header instead of burning the
+        # entire 15-second compact-read timeout first. FarmNavigator will use
+        # the direct Enter House prompt when the car is already at home.
+        if full_header or getattr(obs, 'screen', None) == 'pause_menu' or not observer.visible(obs):
             # This is only called at an unpaid batch/refill boundary. Navigation
             # retains its own exact menu, sync, focus and F7 guards.
-            nav.back_home()
+            if getattr(obs, 'screen', None) == 'pause_menu':
+                nav.ensure_home()
+            else:
+                nav.back_home()
         deadline = self.clock() + self.timeout
+        retried_header = False
         while self.clock() < deadline:
             nav.check()
             nav.observe()
@@ -157,4 +181,19 @@ class CreditLimit:
                 nav.check()
                 return proof
             nav.pause(.2)
+            if self.clock() >= deadline and not retried_header:
+                # A visible compact card can remain unreadable indefinitely.
+                # Change to the existing home route once, retaining this event
+                # and the two fresh account/credit proofs before any purchase.
+                retried_header = True
+                nav.emit('log', 'Compact credit read timed out; retrying from the home account header.')
+                # Wake an idle garage before asking its menu recognizer to
+                # navigate. Waiting for the hidden menu first cannot recover.
+                nav.key('right')
+                if nav.observe().screen == 'pause_menu':
+                    nav.ensure_home()
+                else:
+                    nav.back_home()
+                nav.key('right')
+                deadline = self.clock() + self.timeout
         raise CreditProofUnavailable('Waiting for two fresh credit readings on the identified account; no new batch authorized')

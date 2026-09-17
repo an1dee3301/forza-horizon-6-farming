@@ -1,6 +1,7 @@
 """Numeric Discord scorecard; definitions and historical detail stay on the boards."""
 from .operations_metrics import numeric, fmt
 from .inventory import inventory_summary
+from .farm_notices import discord_time, projected_time
 
 
 def duration(value):
@@ -20,14 +21,20 @@ def status_text(data):
     credits,cost=account.get('credits'),a.get('credits_required')
     earned,bought=data.get('earned',0),data.get('bought',0)
     budget=data.get('credit_budget_estimate') or {}; inventory=inventory_summary(data)
-    rows=['## FH6 // MISSION CONTROL']
+    # Credit-limited runs already expose one canonical, guarded balance in
+    # credit_budget_estimate.  It is selected from the newest valid account or
+    # purchase-adjusted budget proof.  Formatting the raw account OCR here can
+    # resurrect a truncated suffix (for example 6,191,170 -> 6,191) even after
+    # the purchasing guard correctly rejected it.
+    report_credits = budget.get('credits') if data.get('credit_limited') else credits
+    rows=['## HORIZON JAPAN // MISSION CONTROL  運行管制']
     if inventory['current_run']:
         estimate='~' if inventory.get('estimated') else ''
         rows.append(f"**SAVED INVENTORY · {inventory['super_wheelspins']:,}{estimate} SW · {inventory['wheelspins']:,} WS**")
         if inventory.get('estimated'):
-            rows.append(f"Home {inventory['actual_super_wheelspins_at_sync']:,} SW + {inventory['verified_rewards_after_sync']:,} verified rewards · sync {duration(inventory['age_seconds'])} ago")
+            rows.append(f"Home {inventory['actual_super_wheelspins_at_sync']:,} SW + {inventory['verified_rewards_after_sync']:,} verified rewards · sync {discord_time(inventory.get('observed_at'))}")
         else:
-            rows.append(f"Home verified · read {duration(inventory['age_seconds'])} ago")
+            rows.append(f"Home verified · read {discord_time(inventory.get('observed_at'))}")
         correction=inventory.get('hybrid_correction') or {}
         if type(correction.get('delta')) is int and correction['delta']:
             rows.append(f"Last Home correction **{correction['delta']:+,} SW**")
@@ -39,7 +46,7 @@ def status_text(data):
     progress=data.get('last_confirmed_progress') or {}
     if numeric(progress.get('age_seconds')) and numeric(progress.get('delta')):
         unit='SW' if progress.get('kind')=='wheelspin' else 'SP'
-        state_line+=f" · last +{progress['delta']:g} {unit} {duration(progress['age_seconds'])} ago"
+        state_line+=f" · last +{progress['delta']:g} {unit} {discord_time(progress.get('at'))}"
     rows.append(state_line)
     cleanup=a.get('garage_cleanup') or {}; mad=data.get('mad_mike_inventory') or {}
     if cleanup.get('active') or cleanup.get('removed'):
@@ -89,8 +96,8 @@ def status_text(data):
     rows += [f"**Zero retries {fmt(op.get('first_pass_yield'),'%')}** ({op.get('first_pass_samples',0)} cars) · crashes {a.get('crashes',source.get('crashes',0))}",
              f"Forza tax **{tax_label}** residual · {tax.get('n',0)}/{tax.get('total',0)} cars"]
     if data.get('credit_limited'):
-        resource=f"\n**CR {money(credits)} · ≈{value(budget.get('affordable_new_cars'))} more cars**"
-        if numeric(budget.get('age_seconds')): resource+=f" · read {duration(budget['age_seconds'])} ago"
+        resource=f"\n**CR {money(report_credits)} · ≈{value(budget.get('affordable_new_cars'))} more cars**"
+        if budget.get('observed_at'): resource+=f" · read {discord_time(budget['observed_at'])}"
         if numeric(budget.get('committed_credits')) and budget['committed_credits']>0: resource+=f" · {money(budget['committed_credits'])} CR committed"
     else:
         margin=f'{(credits-cost)/1e6:+,.2f}M' if numeric(credits) and numeric(cost) else '—'
@@ -102,7 +109,7 @@ def status_text(data):
         if numeric(refill.get('planned_drive_seconds')): detail+=f" · planned {duration(refill['planned_drive_seconds'])} (est.)"
         rows.append(detail)
     if numeric(a.get('eta_seconds')) and numeric(a.get('eta_upper_seconds')):
-        rows.append(f"**ETA ≈{a['eta_seconds']/3600:.1f}–{a['eta_upper_seconds']/3600:.1f}h · ≈{a.get('farms_remaining','?')} farm runs**")
+        rows.append(f"**FINISH {projected_time(data.get('timestamp'),a['eta_seconds'])} to {projected_time(data.get('timestamp'),a['eta_upper_seconds'])} · ≈{a.get('farms_remaining','?')} farm runs**")
     trial=data.get('farm_trial') or {}
     if trial.get('status')=='active': rows.append(f"**MINI V2 TRIAL:** +{max(0,earned-trial.get('start_rewards',earned))} / {trial.get('reward_limit',100)} SW")
     speed=data.get('speed_trial') or {}
@@ -116,8 +123,8 @@ def status_text(data):
         if recovery.get('message'): warnings.append(recovery['message'])
     if data.get('active') and data.get('game')=='closed': warnings.append('Game closed; recovery required.')
     if 'waiting' in str(data.get('sync','')).casefold(): warnings.append('Waiting for full game sync.')
-    if not numeric(credits): warnings.append('Credits unverified.')
+    if not numeric(report_credits): warnings.append('Credits unverified.')
     elif not data.get('credit_limited') and numeric(cost) and credits<cost: warnings.append(f'Credit shortfall: {money(cost-credits)} CR.')
     if warnings: rows+=['\n**ATTENTION**']+warnings
-    rows.append(f"\nLv {account.get('level','?')} · Prestige {account.get('prestige','?')} · {data.get('timestamp','—')}")
+    rows.append(f"\nLv {account.get('level','?')} · Prestige {account.get('prestige','?')} · updated {discord_time(data.get('timestamp'),'F')} ({discord_time(data.get('timestamp'))})")
     return '\n'.join(rows)

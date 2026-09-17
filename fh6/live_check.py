@@ -21,6 +21,7 @@ from .game_lifecycle import WindowsGame, GameLifecycle
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('action', choices=['inspect', 'startup', 'sync', 'sp', 'mastery-menu', 'menu-speed', 'route-speed', 'cycle-speed', 'finish-cycle', 'garage', 'filter', 'recent', 'recover', 'farm-car', 'farm-settings', 'video-settings', 'collection', 'cleanup-mad-mike', 'verify-mad-mike-empty'])
+    p._actions[1].choices.append('recover-paid-sp')
     p.add_argument('--baseline', action='store_true', help='Use prior menu pacing for a comparison benchmark')
     args = p.parse_args()
     set_dpi_awareness()
@@ -78,6 +79,35 @@ def main():
                     nav.sync_guard.require_verified(lifecycle.game.identity())
                 elif args.action != 'inspect':
                     nav.sync_guard.require_verified(WindowsGame().identity())
+                    if args.action == 'recover-paid-sp':
+                        from .paid_sp_recovery import recover
+                        from .farm_setup import FarmSetupChecks
+                        game = WindowsGame()
+                        nav.setup_checks = FarmSetupChecks('paid_sp_recovery',game.identity)
+                        WindowsGame().activate()
+                        nav.pause(.5)
+                        while run.is_set():
+                            try:
+                                recover(nav,emit)
+                                break
+                            except core.MasteryStopped:
+                                raise
+                            except Exception as exc:
+                                emit('status', 'Paid-car recovery retry: '+str(exc))
+                                # Retry the persisted checkpoint, never the
+                                # purchase. F7 remains live during backoff.
+                                for _ in range(12):
+                                    if not run.is_set():
+                                        raise core.MasteryStopped('Stopped with F7')
+                                    time.sleep(.25)
+                                game.activate()
+                                # Wake the garage's idle camera overlay without
+                                # selecting a menu entry. Full guards still run.
+                                try:
+                                    nav.key('shift')
+                                except RuntimeError:
+                                    pass
+                        return
                     nav.key('shift')
                     import pyautogui
                     nav.check()

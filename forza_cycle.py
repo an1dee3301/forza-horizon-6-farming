@@ -55,6 +55,16 @@ def price_matches(actual, expected):
     return union > 50 and float(np.logical_and(a,b).sum()/union) >= .96
 
 
+def mastery_focus_origin(frame):
+    """Border-only navigation recovery; never evidence for claiming a perk."""
+    cells = [(x, y) for y in (242, 358, 474, 590)
+             for x in (376, 492, 608, 724)
+             if x != 724 or y in (474, 590)]
+    focused = [(x, y) for x, y in cells
+               if has_focus(frame, (x-54, y-54, 108, 108))]
+    return focused[0] if len(focused) == 1 else None
+
+
 def crop(frame, box):
     x, y, w, h = box
     return frame[y:y+h, x:x+w]
@@ -704,8 +714,15 @@ def mastery_once(recognizer, capture, monitor, title, running, *, fast=True):
                 break
             origin = next((node for node in NODES if node[0] == selected), None)
             if origin is None:
-                raise RuntimeError(f'{name}: current mastery selection is ambiguous; no input sent')
-            _, sx, sy, _ = origin
+                position = mastery_focus_origin(frame)
+                # A second fresh frame must agree before navigation away from
+                # a non-route perk. Enter still requires the exact caption.
+                frame, result = observe()
+                if position is None or mastery_focus_origin(frame) != position:
+                    raise RuntimeError(f'{name}: current mastery selection is ambiguous; no input sent')
+                sx, sy = position
+            else:
+                _, sx, sy, _ = origin
             direction = 'left' if x < sx else 'right' if x > sx else 'up' if y < sy else 'down'
             check()
             try:

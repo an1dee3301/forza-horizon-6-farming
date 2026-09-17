@@ -1,9 +1,121 @@
 """Calibrated account strip shared by background OCR and report evidence."""
 import io
 import re
+from functools import lru_cache
+from pathlib import Path
 from datetime import datetime
 
 ACCOUNT_BOX = (1405, 35, 490, 60)  # x, y, width, height at 1920x1080
+_DIGIT_TEMPLATES = Path(__file__).resolve().parent.parent/'recognition'/'credit_digits'
+
+
+def _normalise_credit_digit(pixels):
+    """Turn one masked FH6 credit glyph into the template's fixed canvas."""
+    import cv2
+    import numpy as np
+    ys, xs = np.where(pixels > 0)
+    if not len(xs):
+        return None
+    glyph = pixels[ys.min():ys.max()+1, xs.min():xs.max()+1]
+    scale = min(18/glyph.shape[1], 24/glyph.shape[0])
+    glyph = cv2.resize(glyph, None, fx=scale, fy=scale,
+                       interpolation=cv2.INTER_NEAREST)
+    canvas = np.zeros((28, 22), dtype=np.uint8)
+    y, x = (28-glyph.shape[0])//2, (22-glyph.shape[1])//2
+    canvas[y:y+glyph.shape[0], x:x+glyph.shape[1]] = glyph
+    return canvas
+
+
+@lru_cache(maxsize=1)
+def _credit_templates():
+    """Load glyphs sampled from native FH6 account headers."""
+    import cv2
+    import json
+    try:
+        manifest = json.loads((_DIGIT_TEMPLATES/'manifest.json').read_text(encoding='utf-8'))
+        rows = []
+        for item in manifest['templates']:
+            glyph = cv2.imread(str(_DIGIT_TEMPLATES/item['file']), cv2.IMREAD_GRAYSCALE)
+            if glyph is None or glyph.shape != (28, 22):
+                return ()
+            rows.append((str(item['digit']), glyph))
+        return tuple(rows)
+    except (OSError, KeyError, TypeError, ValueError):
+        return ()
+
+
+def _template_yellow_credits(frame):
+    """Read the fixed FH6 account balance without relying on Windows OCR.
+
+    The CR medallion anchors the row, the two comma components establish the
+    character cells, and every digit must match a native game-font template.
+    AccountObserver still requires the same result on two fresh frames before
+    the value can authorize a purchase.
+    """
+    import cv2
+    import numpy as np
+    if frame is None or frame.shape[:2] != (1080, 1920):
+        return None
+    templates = _credit_templates()
+    if not templates:
+        return None
+    header = cv2.inRange(cv2.cvtColor(frame[:220], cv2.COLOR_BGR2HSV),
+                         (18, 100, 100), (45, 255, 255))
+    _, _, stats, _ = cv2.connectedComponentsWithStats(header)
+    anchors = []
+    for x, y, w, h, area in stats[1:]:
+        if not (x > 1300 and 15 <= w <= 30 and 18 <= h <= 30 and 180 <= area <= 360):
+            continue
+        right = cv2.countNonZero(header[max(0, y-2):min(220, y+h+8),
+                                         x+w+5:min(1920, x+w+200)])
+        if right >= 300:
+            anchors.append((right, x, y, w, h))
+    if len(anchors) != 1:
+        return None
+    _, x, y, w, h = anchors[0]
+    row = header[max(0, y-2):min(220, y+h+8), x+w+5:min(1920, x+w+200)]
+    _, _, parts, _ = cv2.connectedComponentsWithStats(row)
+    commas = sorted((int(px), int(py), int(pw), int(ph))
+        for px, py, pw, ph, area in parts[1:]
+        if py >= row.shape[0]*.48 and 2 <= pw <= 6 and 3 <= ph <= 9 and area >= 5)
+    if len(commas) != 2:
+        return None
+    upper = np.where((row[:round(row.shape[0]*.70)] > 0).any(axis=0))[0]
+    if not len(upper):
+        return None
+    start, end = int(upper.min()), int(upper.max())+1
+    c1, c2 = commas
+    last_start = c2[0]+c2[2]+1
+    pitch = (end-last_start)/3
+    first_count = round((c1[0]-start)/pitch) if pitch > 0 else 0
+    if first_count not in (1, 2, 3):
+        return None
+    groups = ((start, c1[0], first_count),
+              (c1[0]+c1[2]+1, c2[0], 3),
+              (last_start, end, 3))
+    glyphs = []
+    for left, right, count in groups:
+        bounds = np.linspace(left, right, count+1).round().astype(int)
+        for a, b in zip(bounds, bounds[1:]):
+            glyph = _normalise_credit_digit(row[:, a:b])
+            if glyph is None:
+                return None
+            glyphs.append(glyph)
+    digits = []
+    for glyph in glyphs:
+        by_digit = {}
+        total = np.count_nonzero(glyph)
+        for digit, template in templates:
+            denominator = total+np.count_nonzero(template)
+            score = (2*np.logical_and(glyph > 0, template > 0).sum()/denominator
+                     if denominator else 0)
+            by_digit[digit] = max(score, by_digit.get(digit, 0))
+        ranked = sorted(by_digit.items(), key=lambda item: item[1], reverse=True)
+        if len(ranked) < 2 or ranked[0][1] < .72 or ranked[0][1]-ranked[1][1] < .035:
+            return None
+        digits.append(ranked[0][0])
+    value = int(''.join(digits))
+    return f'{value:,}'
 
 
 def compact_capture_box(doc, tag):
@@ -77,6 +189,18 @@ def refine_compact_header(frame, doc, tag, reader):
             candidate = ' '.join(line.text for line in result.lines).strip()
             if re.fullmatch(r'(?:0|[1-9]\d{0,2}(?:[ ,]\d{3})+)', candidate):
                 readings.append(int(re.sub(r'\D','',candidate)))
+    if not any(readings.count(value) >= 2 for value in set(readings)):
+        # Cubic ringing can erase the compact nine-digit balance. A linear
+        # enlargement preserves its strokes; agreement and fresh-frame checks
+        # remain mandatory before the balance can authorize purchases.
+        for scale in (3, 4):
+            pixels = cv2.resize(masks[0], None, fx=scale, fy=scale,
+                                interpolation=cv2.INTER_LINEAR)
+            pixels = cv2.copyMakeBorder(cv2.cvtColor(pixels, cv2.COLOR_GRAY2BGR),
+                40, 40, 40, 40, cv2.BORDER_CONSTANT, value=(0, 0, 0))
+            candidate = ' '.join(line.text for line in reader.read(pixels).lines).strip()
+            if re.fullmatch(r'(?:0|[1-9]\d{0,2}(?:[ ,]\d{3})+)', candidate):
+                readings.append(int(re.sub(r'\D', '', candidate)))
     agreed = [value for value in set(readings) if readings.count(value) >= 2]
     if len(agreed) != 1:
         return None
@@ -95,7 +219,21 @@ def read_yellow_credits(frame, reader):
     doc=reader.read(cv2.cvtColor(cv2.resize(mask,None,fx=3,fy=3,interpolation=cv2.INTER_CUBIC),cv2.COLOR_GRAY2BGR))
     if not isinstance(doc.lines,list):return None
     values=re.findall(r'(?<!\d)\d{1,3}(?:,\d{3})+(?!\d)',' '.join(l.text for l in doc.lines))
-    return values[0] if len(values)==1 else None
+    if len(values)==1:
+        return values[0]
+    # Yellow-on-dark nine-digit balances can disappear in HSV OCR. Require
+    # agreement at two scales of a separate grayscale contrast transform.
+    gray=cv2.cvtColor(frame[43:79,1740:1880],cv2.COLOR_BGR2GRAY)
+    contrast=cv2.threshold(gray,150,255,cv2.THRESH_BINARY_INV)[1]
+    readings=[]
+    for scale in (2,4):
+        text=' '.join(l.text for l in reader.read(cv2.cvtColor(
+            cv2.resize(contrast,None,fx=scale,fy=scale),cv2.COLOR_GRAY2BGR)).lines).strip()
+        if re.fullmatch(r'\d{1,3}(?:,\d{3})+',text):
+            readings.append(text)
+    if len(readings)==2 and readings[0]==readings[1]:
+        return readings[0]
+    return _template_yellow_credits(frame)
 
 
 def compact_header(doc, tag):

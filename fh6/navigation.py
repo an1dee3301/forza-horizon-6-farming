@@ -19,7 +19,7 @@ HOME_TABS = (('campaign', 'CAMPAIGN'), ('buy_sell', 'BUY & SELL'), ('cars', 'CAR
 FOCUS_SETTLE_SCREENS = frozenset({'campaign', 'cars', 'home_tab', 'upgrades',
     'journal', 'discover', 'collection_grid', 'manufacturers', 'garage_grid',
     'garage_filter', 'sort_selection', 'recent_jump', 'paints', 'car_select', 'settings',
-    'remove_confirmation'})
+    'remove_confirmation', 'no_cars'})
 
 # Calibrated screens keep their fast control bands and also read the center,
 # where the observed FHC11, unsaved-change, resource and action dialogs appear.
@@ -181,6 +181,8 @@ def menu_name(doc, result):
     # Callers still wait for stable labels before choosing Yes or No.
     if has('Remove Car From Garage'):
         return 'remove_confirmation'
+    if has('No Cars Available') and has('filter settings', contains=True):
+        return 'no_cars'
     if has('Car Collection', (100, 80, 650, 110)) and has('Manufacturers', contains=True):
         return 'collection_grid'
     if has('Horizon Legend') and has('Master Explorer'):
@@ -501,7 +503,13 @@ class Navigator:
         text = normalize(' '.join(line.text for line in doc.lines))
         if any(phrase in text for phrase in ('video card crash', 'terminated unexpectedly', 'fhc11')):
             raise GameCrashed('The game crashed (video-card error). The run is saved; no further inputs sent.')
-        if any(phrase in text for phrase in danger) and screen not in {'car_action', 'remove_confirmation'}:
+        expected_settings_save = (getattr(self, '_settings_save_expected', False) and
+                                  'unsaved changes' in text and
+                                  'save and continue' in text and
+                                  'cancel' in text)
+        if (any(phrase in text for phrase in danger)
+                and screen not in {'car_action', 'remove_confirmation'}
+                and not expected_settings_save):
             raise RuntimeError('Unexpected dialog or insufficient resources. See the saved screenshot.')
         return self.last
 
@@ -604,8 +612,11 @@ class Navigator:
             self.pause(navigation_poll_delay(time.monotonic()-observation_started, self.fast_navigation))
         raise RuntimeError(f'Timed out waiting for {", ".join(sorted(screens))}; no input retry')
 
-    def key(self, key):
+    def key(self, key, *, hold_seconds=.06):
         import pyautogui
+        if hold_seconds != .06 and (key not in {'backspace', 'delete', *'0123456789'}
+                or not .03 <= hold_seconds <= .06):
+            raise ValueError('Short key holds are limited to numeric text editing')
         self.invalidate_ready()
         if key == 'y':
             self.garage_filters_clear = False
@@ -614,7 +625,7 @@ class Navigator:
         try:
             self.probe('input',key)
             pyautogui.keyDown(key)
-            self.pause(.06)
+            self.pause(hold_seconds)
         finally:
             pyautogui.keyUp(key)
 

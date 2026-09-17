@@ -8,6 +8,7 @@ from .session import replace_checkpoint
 
 
 VIDEO_POLICY='crash_safe_43_fps_v3'
+DIFFICULTY_POLICY='mega_manual_first_v1'
 
 
 class FarmSetupChecks:
@@ -36,12 +37,14 @@ class FarmSetupChecks:
         data=self.read()
         return (data.get('run_id')==self.run_id and data.get('profile')==asdict(profile)
                 and data.get('video_identity')==self.identity()
-                and data.get('video_policy')==VIDEO_POLICY)
+                and data.get('video_policy')==VIDEO_POLICY
+                and data.get('difficulty_policy')==DIFFICULTY_POLICY)
 
     def ensure(self, profile, full_check, video_check):
         profile_data, identity = asdict(profile), self.identity()
         data = self.read()
-        if data.get('run_id') != self.run_id or data.get('profile') != profile_data:
+        if (data.get('run_id') != self.run_id or data.get('profile') != profile_data
+                or data.get('difficulty_policy') != DIFFICULTY_POLICY):
             full_check()
             result = 'full'
         elif data.get('video_identity') != identity or data.get('video_policy') != VIDEO_POLICY:
@@ -53,5 +56,5 @@ class FarmSetupChecks:
         if identity != self.identity():
             raise RuntimeError('Game changed during farm settings verification')
         self.save(dict(run_id=self.run_id, profile=profile_data, video_identity=identity,
-                       video_policy=VIDEO_POLICY))
+                       video_policy=VIDEO_POLICY, difficulty_policy=DIFFICULTY_POLICY))
         return result

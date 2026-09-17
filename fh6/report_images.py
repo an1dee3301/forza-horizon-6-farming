@@ -16,6 +16,7 @@ from .reporting import RUNS, read_json, write_json
 FOLDER = RUNS/'reports'
 MENU_POLICY = 'my_horizon_only_v2'
 LEGACY_MENU_POLICY = 'cars_or_my_horizon_v1'
+FARM_POLICY = 'active_challenge_v1'
 
 
 def allowed_report_menu(screen, doc):
@@ -64,8 +65,8 @@ def unobscured_game(monitor, diagnostic=None):
     return False
 
 
-def capture_game_window(diagnostic=None):
-    """Capture only the verified FH6 window; never fall back to the desktop."""
+def _capture_verified_window():
+    """Return pixels from the focused, process-verified FH6 window only."""
     from .window_capture import capture_window
     from .game_lifecycle import WindowsGame
     game = WindowsGame()
@@ -87,21 +88,56 @@ def capture_game_window(diagnostic=None):
             return None
         if user.GetForegroundWindow() != handle or not game.matches(process):
             return None
-        from .navigation import menu_name
-        from .ocr import WindowsOCR
-        reader = WindowsOCR()
-        try:
-            doc = reader.read(frame)
-            screen = menu_name(doc, core.Recognizer().inspect(frame))
-            if diagnostic:
-                diagnostic(dict(screen=screen, shape=frame.shape, header=[l.text for l in doc.lines if l.center[1]<100]))
-            if not allowed_report_menu(screen, doc):
-                return None
-        finally:
-            reader.close()
         return frame
     finally:
         game.k.CloseHandle(process)
+
+
+def capture_game_window(diagnostic=None):
+    """Capture only the verified FH6 Home menu; never fall back to desktop."""
+    frame = _capture_verified_window()
+    if frame is None:
+        return None
+    from .navigation import menu_name
+    from .ocr import WindowsOCR
+    reader = WindowsOCR()
+    try:
+        doc = reader.read(frame)
+        screen = menu_name(doc, core.Recognizer().inspect(frame))
+        if diagnostic:
+            diagnostic(dict(screen=screen, shape=frame.shape, header=[l.text for l in doc.lines if l.center[1]<100]))
+        if not allowed_report_menu(screen, doc):
+            return None
+    finally:
+        reader.close()
+    return frame
+
+
+def _matches_active_challenge(root, goal_id, event):
+    """Require the worker's fresh, mission-scoped drive checkpoint."""
+    from pathlib import Path
+    from .farm_notices import active_farm
+    root = Path(root)
+    goal = read_json(root/'goal.json')
+    challenge = read_json(root/'challenge.json')
+    runtime = read_json(root/'report_runtime.json')
+    if goal.get('id') != goal_id or not isinstance(event, dict):
+        return False
+    current = active_farm(goal, challenge, runtime, active=True,
+                          timestamp=datetime.now(timezone.utc).astimezone().isoformat(timespec='seconds'))
+    return bool(current and current.get('key') == event.get('key'))
+
+
+def capture_active_challenge(goal_id, event, diagnostic=None, root=RUNS):
+    """Capture a fresh farm frame without OCR or input on the game thread."""
+    if not _matches_active_challenge(root, goal_id, event):
+        return None
+    frame = _capture_verified_window()
+    if frame is None or not _matches_active_challenge(root, goal_id, event):
+        return None
+    if diagnostic:
+        diagnostic(dict(screen='farm_drive', shape=frame.shape, challenge_key=event.get('key')))
+    return frame
 
 
 def store_frame(frame, observed_at, folder=FOLDER, source='Verified unobscured game frame', context=None):
@@ -115,6 +151,45 @@ def store_frame(frame, observed_at, folder=FOLDER, source='Verified unobscured g
     temporary.replace(folder/'game.jpg')
     write_json(folder/'game.json', {'observed_at': observed_at, 'sha256': hashlib.sha256(blob).hexdigest(),
                                   'source': source, **(context or {})})
+
+
+def store_farm_frame(frame, observed_at, folder=FOLDER, context=None):
+    """Persist farm footage separately so it can never become account proof."""
+    ok, jpeg = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 80])
+    if not ok:
+        return None
+    blob = jpeg.tobytes()
+    folder.mkdir(parents=True, exist_ok=True)
+    temporary = folder/'farm_game.tmp'
+    temporary.write_bytes(blob)
+    temporary.replace(folder/'farm_game.jpg')
+    metadata = {'observed_at': observed_at, 'sha256': hashlib.sha256(blob).hexdigest(),
+                'source': 'Fresh verified active challenge capture', 'screen': 'farm_drive',
+                'verified_game': True, 'capture_policy': FARM_POLICY, **(context or {})}
+    write_json(folder/'farm_game.json', metadata)
+    return blob, observed_at
+
+
+def farm_evidence(folder=FOLDER, *, goal_id, challenge_key, max_age_seconds=90, metadata_out=None):
+    """Return only a recent capture from this exact challenge attempt."""
+    metadata = read_json(folder/'farm_game.json')
+    if (metadata.get('capture_policy') != FARM_POLICY or metadata.get('verified_game') is not True
+            or metadata.get('screen') != 'farm_drive' or metadata.get('goal_id') != goal_id
+            or metadata.get('challenge_key') != challenge_key):
+        return None
+    try:
+        observed = datetime.fromisoformat(metadata['observed_at'])
+        if observed.tzinfo is None:
+            return None
+        age = (datetime.now(timezone.utc)-observed.astimezone(timezone.utc)).total_seconds()
+        blob = (folder/'farm_game.jpg').read_bytes()
+        if not 0 <= age <= max_age_seconds or hashlib.sha256(blob).hexdigest() != metadata.get('sha256'):
+            return None
+    except (OSError, KeyError, TypeError, ValueError):
+        return None
+    if metadata_out is not None:
+        metadata_out.update(metadata)
+    return blob, metadata['observed_at']
 
 
 def _legacy_image_is_my_horizon(blob):
@@ -165,7 +240,8 @@ def _approved_evidence(folder, stem, *, goal_id, earned):
     return None
 
 
-def evidence(folder=FOLDER, *, goal_id=None, earned=None, metadata_out=None):
+def evidence(folder=FOLDER, *, goal_id=None, earned=None, metadata_out=None,
+             max_age_seconds=15*60):
     """Latest same-mission approved menu; exact reward matching is optional.
 
     Retain an independent approved copy because a running old worker can still
@@ -175,6 +251,11 @@ def evidence(folder=FOLDER, *, goal_id=None, earned=None, metadata_out=None):
     current = _approved_evidence(folder, 'game', goal_id=goal_id, earned=earned)
     retained = _approved_evidence(folder, 'my_horizon', goal_id=goal_id, earned=earned)
     candidates = [item for item in (current, retained) if item is not None]
+    if max_age_seconds is not None:
+        now_utc = datetime.now(timezone.utc)
+        candidates = [item for item in candidates
+                      if 0 <= (now_utc-item[2].astimezone(timezone.utc)).total_seconds()
+                      <= max_age_seconds]
     if not candidates:
         return None
     selected = max(candidates, key=lambda item: item[2])

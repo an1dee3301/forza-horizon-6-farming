@@ -44,17 +44,41 @@ def game_state():
 
 
 def deliver(data, *, periodic=False):
+    from .eta_history import update
+    update(RUNS,data)
     previous = read_json(STATE).get('snapshot')
     if not periodic and not report_due(previous, data, 0, 0):
         return {'skipped': 'No newly earned Super Wheelspin; no Discord message sent.'}
-    from .report_images import evidence
+    from .report_images import (capture_active_challenge, evidence, farm_evidence,
+                                store_farm_frame)
     garage_image = None
     if periodic:
         data = dict(data, report_kind='status')
-        # Reuse the latest approved My Horizon frame for this mission, retaining
-        # its original timestamp even while newer rewards are being converted.
         metadata = {}
-        garage_image = evidence(goal_id=data['goal_id'], metadata_out=metadata)
+        farm = data.get('farm_event')
+        if farm:
+            # This independent IDLE-priority process captures once per report.
+            # It never sends input and cannot lengthen the farm route.
+            frame = capture_active_challenge(data['goal_id'], farm)
+            if frame is not None:
+                captured_at = now()
+                context = dict(goal_id=data['goal_id'], challenge_key=farm['key'],
+                               challenge_id=farm.get('id'), launch_attempt=farm.get('attempt'),
+                               share_code=farm.get('share_code'))
+                garage_image = store_farm_frame(frame, captured_at, context=context)
+            if garage_image is None:
+                garage_image = farm_evidence(goal_id=data['goal_id'],
+                                             challenge_key=farm['key'], metadata_out=metadata)
+            else:
+                metadata.update(capture_policy='active_challenge_v1', verified_game=True,
+                                screen='farm_drive', observed_at=garage_image[1],
+                                source='Fresh verified active challenge capture',
+                                goal_id=data['goal_id'], challenge_key=farm['key'],
+                                challenge_id=farm.get('id'), launch_attempt=farm.get('attempt'),
+                                share_code=farm.get('share_code'))
+        else:
+            # Outside a challenge, retain the strict My Horizon-only policy.
+            garage_image = evidence(goal_id=data['goal_id'], metadata_out=metadata)
         data['game_capture']=metadata if garage_image else {}
     else:
         garage_image = evidence(goal_id=data['goal_id'], earned=data['earned'])
@@ -97,7 +121,10 @@ def watch():
         kernel.GetCurrentProcess.restype = ctypes.c_void_p
         kernel.SetPriorityClass.argtypes = [ctypes.c_void_p, ctypes.c_uint32]
         kernel.SetPriorityClass.restype = ctypes.c_int
-        kernel.SetPriorityClass(kernel.GetCurrentProcess(), 0x00004000)  # BELOW_NORMAL
+        # Full-board rendering is intentionally CPU-heavy. At IDLE priority it
+        # uses spare cores only, so a minute report cannot steal scheduling
+        # time from Forza or the input/recognition worker.
+        kernel.SetPriorityClass(kernel.GetCurrentProcess(), 0x00000040)  # IDLE_PRIORITY_CLASS
     except (AttributeError, OSError):
         pass  # Optional scheduling must never prevent reports.
     saved = read_json(STATE)
@@ -164,29 +191,29 @@ def start_watcher():
 def settings_window():
     import tkinter as tk
     window = tk.Tk()
-    window.title('FH6 // DISCORD REPORTS')
-    window.configure(bg='#0B1018')
+    window.title('HORIZON JAPAN // DISCORD REPORTS')
+    window.configure(bg='#061216')
     window.resizable(False, False)
-    window.option_add('*Font', 'Consolas 11')
+    window.option_add('*Font', 'Bahnschrift 11')
     config = secrets.settings()
     enabled = tk.BooleanVar(value=config.get('enabled', False))
     url = tk.StringVar()
     minutes = tk.StringVar(value=str(config.get('interval_seconds', 60)//60))
     status = tk.StringVar(value='Saved webhook stays private. Leave its field blank to keep it.')
     def text(value, row):
-        tk.Label(window, text=value, fg='#E6EDF3', bg='#0B1018', anchor='w').grid(
+        tk.Label(window, text=value, fg='#F4FBFB', bg='#061216', anchor='w').grid(
             row=row, column=0, columnspan=2, padx=22, pady=8, sticky='w')
-    text('FH6 // DISCORD REPORTS', 0)
+    text('HORIZON JAPAN // DISCORD REPORTS  レポート', 0)
     tk.Checkbutton(window, text='Enable automatic reports', variable=enabled,
-        fg='#00C087', bg='#0B1018', selectcolor='#182331', activebackground='#0B1018',
-        activeforeground='#00C087').grid(row=1,column=0,columnspan=2,padx=18,sticky='w')
+        fg='#00E5D4', bg='#061216', selectcolor='#102830', activebackground='#061216',
+        activeforeground='#00E5D4').grid(row=1,column=0,columnspan=2,padx=18,sticky='w')
     text('Webhook (encrypted for this Windows user)', 2)
-    tk.Entry(window, textvariable=url, show='*', width=64, bg='#182331', fg='white',
+    tk.Entry(window, textvariable=url, show='*', width=64, bg='#102830', fg='white',
         insertbackground='white', relief='solid').grid(row=3,column=0,columnspan=2,padx=22,pady=4)
     text('Report interval in minutes (1–60), including farming and recovery:', 4)
-    tk.Entry(window, textvariable=minutes, width=6, bg='#182331', fg='white',
+    tk.Entry(window, textvariable=minutes, width=6, bg='#102830', fg='white',
         insertbackground='white', relief='solid').grid(row=5,column=0,padx=22,sticky='w')
-    text('Three boards + My Horizon image carousel. Account strip at the top.', 6)
+    text('Three boards + fresh challenge/Home image carousel. Account strip at the top.', 6)
     def save():
         try:
             secrets.configure(url.get() or None, enabled=enabled.get(), interval_seconds=int(minutes.get())*60)
@@ -206,10 +233,10 @@ def settings_window():
             window.after(0, lambda: status.set(message))
         threading.Thread(target=task, daemon=True).start()
     for column, (title, command) in enumerate([('SAVE', save), ('SEND STATUS NOW', test)]):
-        tk.Button(window, text=title, command=command, bg='#00C087', fg='#0B1018',
+        tk.Button(window, text=title, command=command, bg='#00E5D4', fg='#061216',
             relief='solid', borderwidth=1, width=25).grid(row=7,column=column,padx=22,pady=12)
-    tk.Label(window, textvariable=status, wraplength=640, justify='left', fg='#E6EDF3',
-        bg='#0B1018').grid(row=8,column=0,columnspan=2,padx=22,pady=(6,22),sticky='w')
+    tk.Label(window, textvariable=status, wraplength=640, justify='left', fg='#F4FBFB',
+        bg='#061216').grid(row=8,column=0,columnspan=2,padx=22,pady=(6,22),sticky='w')
     window.mainloop()
 
 

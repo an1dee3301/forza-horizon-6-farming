@@ -87,7 +87,7 @@ def remember_farm_tree(nav,profile):
         nav._farm_tree_proof=(identity,nav.setup_checks.run_id,asdict(profile))
 
 
-def menu_farm_ready(nav,profile,obs):
+def menu_farm_ready(nav,profile,obs, *, selected=False):
     """Only reuse tree ownership on a same-process repeat with current car proof."""
     from .farming import farm_car
     from .ocr import Document
@@ -95,7 +95,8 @@ def menu_farm_ready(nav,profile,obs):
     from .pause_mastery import target_title
     proof=getattr(nav,'_farm_tree_proof',None)
     if (not isinstance(proof,tuple) or len(proof)!=3 or
-            getattr(nav,'_farm_pause_balance',False) is not True or target_title(obs) is None):
+            not (getattr(nav,'_farm_pause_balance',False) is True or
+                 (selected and getattr(nav,'_farm_selected_from_pause',False) is True)) or target_title(obs) is None):
         return False
     identity=game_identity(nav)
     if identity is None or proof!=(identity,nav.setup_checks.run_id,asdict(profile)):
@@ -117,3 +118,19 @@ def menu_farm_ready(nav,profile,obs):
     nav.check()
     return (matched and nav.last is obs and nav.focus_generation==generation
             and game_identity(nav)==identity)
+
+
+def selected_farm_balance(nav, profile):
+    """Reuse owned-tree proof after selection; balance is always freshly read."""
+    if (getattr(nav, '_farm_selected_from_pause', False) is not True or
+            not isinstance(getattr(nav, '_farm_tree_proof', None), tuple)):
+        return None
+    nav.pause_tab('CARS')
+    if not menu_farm_ready(nav, profile, nav.observe(), selected=True):
+        return None
+    points = read_tile_sp(nav)
+    if points is not None:
+        nav._farm_pause_balance = True
+        nav._farm_selected_from_pause = False
+        nav.emit('log', 'Selected Subaru matched this process’s owned-tree proof; fresh menu SP replaces mastery entry.')
+    return points

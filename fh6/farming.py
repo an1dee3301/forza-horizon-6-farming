@@ -13,7 +13,7 @@ import cv2
 import numpy as np
 
 import forza_cycle as core
-from .navigation import Navigator, LEFT, Observation, selected_card
+from .navigation import Navigator, LEFT, Observation, selected_card, navigation_poll_delay
 from .ocr import normalize, Document, Text
 from .points import read_points, recent_sp, remember_sp
 from .profiles import load_profile
@@ -29,6 +29,10 @@ TOP = (60, 100, 1770, 150)
 FOOTER = (60, 965, 1800, 100)
 FARM_TIMER = (35, 25, 390, 175)
 FARM_FULL_AUDIT_SECONDS = 1.5
+FARM_OPTIMIZER_VERSION = 'mega_bank_pulse_v2'
+BANK_PULSE_SECONDS = 20.0
+BANK_PULSE_HOLD_SECONDS = .06
+SETTINGS_PENDING = core.BASE/'runs'/'farm_settings_pending.json'
 
 # These waits already use the base navigator's complete recognition and safety
 # checks. Unknown animation frames between them do not need farm HUD OCR too.
@@ -103,7 +107,6 @@ def farm_car(doc, profile):
 
 def owned_home_entry(doc):
     return (not timer_visible(doc) and doc.has('ANNA', FOOTER, contains=True)
-            and doc.has('Owned', (60, 300, 600, 240))
             and doc.has('Enter House', (60, 480, 620, 150), contains=True))
 
 
@@ -128,6 +131,68 @@ def farm_tree_owned(frame):
     return all(core.node_state(frame,x,y)['state'] == 'owned' for x,y in nodes)
 
 
+def difficulty_value(doc, label):
+    """Return one normalized value from the exact difficulty row."""
+    rows = doc.find(label)
+    if len(rows) != 1:
+        return None
+    row = rows[0]
+    values = [normalize(line.text) for line in doc.lines
+              if line.center[0] > row.center[0]+250
+              and abs(line.center[1]-row.center[1]) < 22
+              and normalize(line.text) not in {'o'}]
+    return values[0] if len(values) == 1 else None
+
+
+def settings_save_dialog(doc):
+    return (doc.has('Unsaved Changes', contains=True)
+            and len(doc.find('Save and Continue', contains=True)) == 1
+            and len(doc.find('Discard and Continue', contains=True)) == 1
+            and len(doc.find('Cancel')) == 1)
+
+
+def pending_settings_save(nav):
+    from .analytics import read
+    data = read(SETTINGS_PENDING)
+    setup = getattr(nav, 'setup_checks', None)
+    if not isinstance(data, dict) or setup is None or data.get('status') != 'pending':
+        return False
+    try:
+        # The worker is constructed with a fresh timestamp and restores the
+        # mission id only after the startup/sync gate.  A settings-save dialog
+        # can be the very screen that gate observes, so bind recovery to the
+        # persisted active goal instead of the temporary worker id.  Normalize
+        # identity containers because JSON turns tuples into lists.
+        goal = read(core.BASE/'runs'/'goal.json')
+        safe_goal = (isinstance(goal, dict)
+                     and goal.get('id') == data.get('goal_id')
+                     and goal.get('phase') == 'farm'
+                     and goal.get('batch') is None
+                     and goal.get('reservation') is None)
+        saved_identity = tuple(data.get('game_identity') or ())
+        live_identity = tuple(setup.identity() or ())
+        return safe_goal and bool(saved_identity) and saved_identity == live_identity
+    except (OSError, TypeError, ValueError):
+        return False
+
+
+def remember_settings_save(nav):
+    from .analytics import save
+    setup = getattr(nav, 'setup_checks', None)
+    if setup is None:
+        raise RuntimeError('Farm settings identity unavailable; no setting changed')
+    save(SETTINGS_PENDING, dict(goal_id=setup.run_id, status='pending',
+        game_identity=setup.identity(), setting='Shifting', value='Manual',
+        optimizer_version=FARM_OPTIMIZER_VERSION))
+
+
+def clear_settings_save():
+    try:
+        SETTINGS_PENDING.unlink()
+    except FileNotFoundError:
+        pass
+
+
 class FarmNavigator(Navigator):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -136,6 +201,8 @@ class FarmNavigator(Navigator):
         self.setup_checks = None
 
     def observe(self):
+        if pending_settings_save(self):
+            self._settings_save_expected = True
         if getattr(self, '_farm_countdown_fast', False):
             now = time.monotonic()
             if now < getattr(self, '_farm_full_audit_due', 0):
@@ -223,6 +290,7 @@ class FarmNavigator(Navigator):
         end, stable = time.monotonic() + (timeout or self.timeout), 0
         notification, notification_frames, acknowledged = None, 0, None
         while time.monotonic() < end:
+            observation_started = time.monotonic()
             obs = self.observe()
             stable = stable + 1 if predicate(obs) else 0
             if stable >= 2:
@@ -236,11 +304,19 @@ class FarmNavigator(Navigator):
                     acknowledged = obs.screen
             else:
                 notification, notification_frames = None, 0
-            self.pause(.06 if self.fast_navigation else .2)
+            self.pause(navigation_poll_delay(time.monotonic()-observation_started)
+                       if self.fast_navigation else .2)
         raise RuntimeError(f'Timed out verifying {description}; no input retry')
 
     def select(self, label, region=None, contains=False):
-        obs = self.until(lambda o: len(o.doc.find(label, region, contains)) == 1, label)
+        # This observation only routes to the existing selector. That selector
+        # independently verifies stable screen/target/focus before sending input.
+        # Do not pay for another two-frame preflight on already visible menus.
+        obs = self.observe() if self.fast_navigation else None
+        if (obs is None or obs.screen not in {'pause_menu', 'eventlab', 'challenge_search',
+                'settings', 'campaign', 'cars', 'upgrades'} or
+                len(obs.doc.find(label, region, contains)) != 1):
+            obs = self.until(lambda o: len(o.doc.find(label, region, contains)) == 1, label)
         self.click_label(obs.screen, label, region, contains)
 
     @staticmethod
@@ -320,11 +396,37 @@ class FarmNavigator(Navigator):
         self._farm_mastery_origin_unknown=False
         for _ in range(10):
             obs = self.observe()
+            if obs.screen == 'no_cars':
+                # My Cars can preserve an empty filter across a stopped cleanup.
+                # This native modal has one harmless acknowledgement and must be
+                # cleared before the normal garage -> Home recovery can proceed.
+                self.wait('no_cars', predicate=lambda o:
+                    len(o.doc.find('No Cars Available')) == 1 and
+                    len(o.doc.find('filter settings', contains=True)) == 1 and
+                    len(o.doc.find('Enter', (65,975,240,70), contains=True)) == 1)
+                self.emit('log', 'Acknowledging the verified empty My Cars filter before Home recovery.')
+                self.key('enter')
+                # FH6 returns this acknowledgement to Filter Selection, not
+                # the empty grid. Reset the now-visible filter explicitly so
+                # the garage has a valid destination for Home recovery.
+                self.wait('garage_filter', previous='no_cars')
+                from .garage import set_favorites
+                set_favorites(self, False)
+                continue
             if obs.screen in {'series_update', 'festival_playlist'}:
                 previous = obs.screen
                 self.wait(previous)
                 self.key('esc' if previous == 'festival_playlist' else 'enter')
                 self.until(lambda o: o.screen != previous, 'closing seasonal notification')
+                continue
+            if settings_save_dialog(getattr(obs, 'doc', Document([]))) and pending_settings_save(self):
+                self._settings_save_expected = True
+                self.emit('log', 'Recovered the exact pending Manual-shifting save dialog after restart.')
+                self.click_label(obs.screen, 'Save and Continue', contains=True)
+                self.until(lambda o: o.screen == 'settings' and o.doc.has('Difficulty'),
+                           'settings after recovered save')
+                clear_settings_save()
+                self._settings_save_expected = False
                 continue
             if obs.screen == 'new_car_collected':
                 self.wait('new_car_collected')
@@ -439,11 +541,12 @@ class FarmNavigator(Navigator):
             return proof.points
         self._verified_sp = None
         obs = self.observe()
-        if allow_menu and obs.screen=='pause_menu':
+        if allow_menu and obs.screen in {'pause_menu','campaign','cars','home_tab'}:
             points=read_tile_sp(self)
             if points is None:
-                self.pause_tab('CARS')
-                points=read_tile_sp(self)
+                if obs.screen == 'pause_menu':
+                    self.pause_tab('CARS')
+                    points=read_tile_sp(self)
             if points is not None:
                 return points
         if obs.screen=='pause_menu' and getattr(self,'_farm_selected_from_pause',False) is True:
@@ -539,7 +642,58 @@ class FarmNavigator(Navigator):
                       and abs(l.center[1]-y) < 22]
             if not any(v in allowed for v in values):
                 raise RuntimeError(f'Mega V6 needs automatic {label.lower()} off. Check Settings → Difficulty.')
-        self.key('esc')
+        shifting = difficulty_value(obs.doc, 'Shifting')
+        changed_shifting = False
+        if shifting == 'automatic':
+            # Current Mega V6 testing reports materially faster banking in
+            # first gear. The exact Shifting row supplies Y; the fixed native
+            # right arrow supplies X. Readback must prove Manual twice.
+            import pyautogui
+            row = obs.doc.unique('Shifting')
+            self.check()
+            self.emit('log', 'Mega V6 optimizer: changing Shifting from Automatic to Manual for first-gear farming.')
+            self.probe('input', 'difficulty Shifting right')
+            pyautogui.moveTo(self.monitor['left']+1413,
+                             self.monitor['top']+row.center[1], duration=.04)
+            try:
+                pyautogui.mouseDown()
+                self.pause(.06)
+            finally:
+                pyautogui.mouseUp()
+            pyautogui.moveTo(self.monitor['left']+1810, self.monitor['top']+970)
+            # The first pointer activation can focus the row without cycling
+            # its value. Prove that exact focus, then send one reversible Right
+            # pulse. This matches the live settings behavior.
+            from .navigation import label_focused
+            focused = self.until(lambda o: o.screen == 'settings' and
+                len(o.doc.find('Shifting')) == 1 and
+                difficulty_value(o.doc, 'Shifting') == 'automatic' and
+                label_focused(o.frame, o.doc.find('Shifting')[0]),
+                'focused Automatic shifting row')
+            if difficulty_value(focused.doc, 'Shifting') == 'automatic':
+                remember_settings_save(self)
+                self.key('right')
+            obs = self.until(lambda o: o.screen == 'settings' and
+                             difficulty_value(o.doc, 'Shifting') == 'manual',
+                             'Manual shifting readback')
+            shifting = difficulty_value(obs.doc, 'Shifting')
+            changed_shifting = shifting == 'manual'
+        if shifting != 'manual':
+            raise RuntimeError('Mega V6 optimizer requires Settings → Difficulty → Shifting = Manual; no farm launched.')
+        if changed_shifting:
+            self._settings_save_expected = True
+            try:
+                self.key('esc')
+                dialog = self.until(lambda o: settings_save_dialog(o.doc),
+                    'verified settings save dialog')
+                self.click_label(dialog.screen, 'Save and Continue', contains=True)
+                self.until(lambda o: o.screen == 'settings' and o.doc.has('Difficulty'),
+                           'settings after saving Manual shifting')
+                clear_settings_save()
+            finally:
+                self._settings_save_expected = False
+        else:
+            self.key('esc')
         self.select('HUD & Gameplay', LEFT)
         # Move only through the verified settings list. Wheel scrolling skips
         # inconsistently here; Down changes focus without changing any setting.
@@ -629,15 +783,22 @@ class FarmNavigator(Navigator):
         else:
             self.wait('share_code', previous='challenge_search')
             for _ in range(16):
-                self.key('backspace')
-                self.key('delete')
+                self.key('backspace', hold_seconds=.03 if self.fast_navigation else .06)
+                self.key('delete', hold_seconds=.03 if self.fast_navigation else .06)
         # Only digits are accepted by the profile; never paste arbitrary commands.
         for digit in profile.share_code:
-            self.key(digit)
-        self.until(lambda o: o.doc.has(profile.share_code, contains=True), 'entered share code')
+            self.key(digit, hold_seconds=.03 if self.fast_navigation else .06)
+        from .share_editor import exact_share_code
+        self.until(lambda o: exact_share_code(o, profile.share_code), 'exact entered share code')
         self.key('enter')
-        self.wait('challenge_search', previous='share_code',
+        retained = self.wait('challenge_search', previous='share_code',
                   predicate=lambda o: o.doc.has(profile.share_code, contains=True))
+        # Windows OCR frequently confuses one retained digit on the next run.
+        # This frame has just passed exact editor and exact search-form OCR, so
+        # it can safely seed the profile-bound interior-pixel proof used later.
+        from .farm_search import remember_retained_code
+        if remember_retained_code(retained, profile.share_code):
+            self.emit('log', 'Saved exact retained-code pixels for faster repeat farm search.')
         self.select('Confirm')
         self.wait_challenge_result()
 
@@ -715,6 +876,50 @@ class Challenge:
         return self._reacquire_throttle(
             'challenge timer after accelerator refresh', 10)
 
+    def _pulse_bank(self, pyautogui, index):
+        """Tiny alternating steering input while preserving continuous throttle.
+
+        Mega V6 banks repeated skill-chain segments. Community observations
+        report that movement between those segments prevents weak/empty banks.
+        The pulse is authorized by the same two-frame countdown, focus, sync,
+        process-identity and F7 proof used for throttle acquisition.
+        """
+        nav, proof = self.nav, self._throttle_proof
+        key = 'a' if index % 2 == 0 else 'd'
+        def pulse():
+            pyautogui.keyDown(key)
+            try:
+                nav.pause(BANK_PULSE_HOLD_SECONDS)
+            finally:
+                pyautogui.keyUp(key)
+        return proof.run_input(pulse)
+
+    def _reverse_stationary_car(self, pyautogui, seconds=5.0):
+        """Back away from a verified obstruction, then re-prove forward drive.
+
+        The reverse key is sent only from the same fresh countdown, focus,
+        sync and process proof used for throttle. ``nav.pause`` keeps checking
+        F7 and game focus throughout the five-second recovery.
+        """
+        nav, p, proof = self.nav, self.profile, self._throttle_proof
+        nav.check()
+        pyautogui.keyUp(p.accelerator)
+
+        def reverse():
+            pyautogui.keyDown('s')
+            try:
+                nav.pause(seconds)
+            finally:
+                pyautogui.keyUp('s')
+
+        if not proof.run_input(reverse):
+            pyautogui.keyUp('s')
+            proof.reset()
+            return False
+        proof.reset()
+        return self._reacquire_throttle(
+            'challenge timer after five-second reverse recovery', 10)
+
     def _recover_drive_ended_at_house(self, current):
         """Move a crash-ended drive to retained-SP inspection without input."""
         def house_document(obs):
@@ -787,16 +992,25 @@ class Challenge:
             self.save(exit_reason='natural_completion')
             return
         deadline = time.monotonic()+p.duration_seconds+120
+        from .farm_motion import (StationaryWatch, scene_is_moving,
+                                  speed_from_frame, anti_afk_interval)
+        refresh_interval = anti_afk_interval(p)
         movement = time.monotonic()
+        bank_pulse_at = time.monotonic() + BANK_PULSE_SECONDS
+        bank_pulse_index = int(self.data.get('bank_pulses', 0))
         remaining = remaining_seconds(initial.doc)
         if remaining is not None:
             self.save(timer_start=max(remaining,self.data.get('timer_start',0)))
-        if remaining is not None and remaining <= p.duration_seconds-p.movement_interval:
+        if remaining is not None and remaining <= p.duration_seconds-refresh_interval:
             # A resumed worker cannot know when the old worker last steered.
             # Send a pulse on the next verified active frame rather than
             # restarting a full interval and exceeding the event's AFK window.
-            movement -= p.movement_interval
+            movement -= refresh_interval
         watch = TimerWatch()
+        motion = StationaryWatch()
+        stationary_retries = int(self.data.get('stationary_reverse_recoveries', 0))
+        previous_motion_frame = None
+        motion_check_at = time.monotonic() + 7
         held = False
         last_report = 0
         last_observation=time.monotonic()
@@ -850,6 +1064,51 @@ class Challenge:
                 if remaining is not None:
                     elapsed=max(0,self.data.get('timer_start',remaining)-remaining)
                     self.data['drive_seconds']=elapsed
+                    if (p.share_code == '155439962' and held and
+                            time.monotonic() >= motion_check_at):
+                        # Existing active-countdown, focus and sync guards ran
+                        # above. Read only a small speed HUD crop every 7s.
+                        visual_motion = scene_is_moving(previous_motion_frame, obs.frame)
+                        previous_motion_frame = obs.frame.copy()
+                        # OpenCV motion is the cheap common path. Windows OCR
+                        # is reserved for a visually stationary/unknown frame,
+                        # where an exact non-zero speed can veto recovery. This
+                        # removes roughly 200 synchronous OCR jobs per full run.
+                        speed = (None if visual_motion is True else
+                                 speed_from_frame(nav.reader, obs.frame))
+                        effective_speed = (1 if visual_motion is True else
+                                           speed if speed is not None else
+                                           0 if visual_motion is False else None)
+                        nav.check()
+                        self.data['motion_speed_reads'] = self.data.get('motion_speed_reads', 0)+1
+                        if effective_speed is not None:
+                            self.data['motion_valid_reads'] = self.data.get('motion_valid_reads', 0)+1
+                        if self.data['motion_speed_reads'] % 9 == 1:
+                            self.emit('log', f'Farm motion sample: speed={speed}; visual={visual_motion}; valid '
+                                      f'{self.data.get("motion_valid_reads", 0)}/{self.data["motion_speed_reads"]}.')
+                        stationary = motion.observe(effective_speed, elapsed, time.monotonic())
+                        motion_check_at = time.monotonic()+7
+                        if stationary and not proof.changed():
+                            samples = motion.samples
+                            if stationary_retries < 1:
+                                held = self._reverse_stationary_car(pyautogui, 5.0)
+                                if held:
+                                    stationary_retries += 1
+                                    self.data['stationary_reverse_recoveries'] = stationary_retries
+                                    self.emit('log', 'Stationary car recovered: reversed for 5s, re-proved the active challenge, and resumed forward throttle.')
+                                    motion = StationaryWatch()
+                                    previous_motion_frame = None
+                                    motion_check_at = time.monotonic()+7
+                                    movement = time.monotonic()
+                                    continue
+                            pyautogui.keyUp(p.accelerator)
+                            pyautogui.keyUp('s')
+                            held = False
+                            self.emit('log', 'Stationary recovery was unavailable or the car stalled again; exiting this attempt to verify retained SP.')
+                            self.save(phase='early_leave', exit_reason='stationary_recovery_exit',
+                                      drive_seconds=elapsed, stationary_speed_samples=samples,
+                                      stationary_reverse_recoveries=stationary_retries)
+                            return
                     plan=self.data.get('refill_plan',{})
                     if plan.get('planned_exit')=='target_top_up' and elapsed>=plan['planned_drive_seconds']:
                         pyautogui.keyUp(p.accelerator)
@@ -866,7 +1125,13 @@ class Challenge:
                     if not held:
                         nav.pause(.06)
                         continue
-                if time.monotonic()-movement >= p.movement_interval:
+                if (p.share_code == '155439962' and held and
+                        time.monotonic() >= bank_pulse_at):
+                    if self._pulse_bank(pyautogui, bank_pulse_index):
+                        bank_pulse_index += 1
+                        self.data['bank_pulses'] = bank_pulse_index
+                    bank_pulse_at = time.monotonic() + BANK_PULSE_SECONDS
+                if time.monotonic()-movement >= refresh_interval:
                     nav.check()
                     if proof.changed():
                         pyautogui.keyUp(p.accelerator)
@@ -882,6 +1147,7 @@ class Challenge:
             nav._farm_countdown_fast = False
             pyautogui.keyUp(p.accelerator)
             pyautogui.keyUp(p.movement_key)
+            pyautogui.keyUp('s')
 
     def run(self, identifier, *, return_collection=True):
         nav = self.nav
@@ -890,7 +1156,10 @@ class Challenge:
         if self.data.get('id') != identifier or skipped:
             if self.data and self.data.get('phase') != 'complete':
                 raise RuntimeError('An unfinished challenge exists; resume it before starting another')
-            self.data = dict(id=identifier, phase='prepare', share_code=self.profile.share_code)
+            from .farm_motion import anti_afk_interval
+            self.data = dict(id=identifier, phase='prepare', share_code=self.profile.share_code,
+                             optimizer_version=FARM_OPTIMIZER_VERSION,
+                             anti_afk_interval_seconds=anti_afk_interval(self.profile))
             self.save()
         if self.data['share_code'] != self.profile.share_code:
             raise RuntimeError('The challenge profile changed during an unfinished farm run')
@@ -899,6 +1168,9 @@ class Challenge:
             target=getattr(self,'target_sp',999)
             policy=decision_from_files(self.data['before_sp'],target,self.path.parent,self.profile,
                             reserve=getattr(self,'reserve_sp',0),check=nav.check)
+            if getattr(self, 'force_target_sp', False):
+                from .refill_control import force_exact_target
+                policy = force_exact_target(policy, self.data['before_sp'], target, self.profile)
             self.save(refill_plan=policy,target_sp=target)
             self.emit('log',describe(policy,self.profile.name))
         if (self.data.get('refill_plan',{}).get('mode')=='convert' and
@@ -928,7 +1200,12 @@ class Challenge:
                     self.emit('log', 'Verified maxed Subaru mastery is already open; skipping the repeat garage trip.')
                 else:
                     nav.select_farm_car(self.profile)
-                points = nav.available_sp(allow_menu=menu_ready)
+                from .farm_balance import selected_farm_balance
+                points = selected_farm_balance(nav,self.profile) if not menu_ready else None
+                if points is not None:
+                    menu_ready=True
+                else:
+                    points = nav.available_sp(allow_menu=menu_ready)
                 if not menu_ready:
                     title = nav.reader.read(core.crop(nav.last.frame, (810,190,610,100)))
                     if not farm_car(title, self.profile) or not farm_tree_owned(nav.last.frame):
@@ -938,6 +1215,9 @@ class Challenge:
                 from .refill_control import decision_from_files, describe
                 policy=decision_from_files(points,target,self.path.parent,self.profile,
                                 reserve=getattr(self,'reserve_sp',0),check=nav.check)
+                if getattr(self, 'force_target_sp', False):
+                    from .refill_control import force_exact_target
+                    policy = force_exact_target(policy, points, target, self.profile)
                 self.emit('log',describe(policy,self.profile.name))
                 if points >= target or policy.get('mode')=='convert':
                     self.save(phase='return',before_sp=points,after_sp=points,refill_plan=policy,
@@ -1011,9 +1291,18 @@ class Challenge:
                     self.save(phase='prepare', empty_attempts=self.data.get('empty_attempts', 0)+1)
                     nav.ensure_home()
                     continue
-                if points-self.data['before_sp'] < 21 and points < 999:
+                from .farm_yield_health import assess
+                from .analytics import read as read_analytics
+                health = assess(dict(self.data, gained_sp=points-self.data['before_sp'],
+                                     capped=points == 999),
+                                read_analytics(self.path.parent/'analytics.json').get('farms', []),
+                                self.profile.duration_seconds)
+                self.data['yield_health'] = health
+                if ((points-self.data['before_sp'] < 21 or health['degraded']) and points < 999):
                     nav.invalidate_farm_video()
-                    self.emit('log', 'Low farm yield: rechecking only the frame-rate cap before the next challenge.')
+                    self.emit('log', f'Low farm yield: {points-self.data["before_sp"]} SP; '
+                              f'recent full-run median {health.get("expected_sp", "unavailable")}. '
+                              'Rechecking the frame-rate cap before the next challenge; cause not established.')
                 policy=self.data.get('refill_plan',{})
                 if self.data.get('exit_reason')=='intentional_target_top_up':
                     from .analytics import save
@@ -1037,7 +1326,9 @@ class Challenge:
             after_sp=self.data['after_sp'], empty_attempts=self.data.get('empty_attempts', 0),
             launch_attempts=self.data.get('launch_attempts', 0),**{k:self.data.get(k) for k in
                 ('exit_reason','drive_seconds','raw_estimated_sp','estimated_cap_loss_sp',
-                 'max_observation_gap_seconds','observation_count','throttle_interruptions')},target_sp=self.data.get('target_sp',999)))
+                 'max_observation_gap_seconds','observation_count','throttle_interruptions',
+                 'yield_health','motion_speed_reads','motion_valid_reads',
+                 'stationary_speed_samples')},target_sp=self.data.get('target_sp',999)))
         return self.data['after_sp']
 
     def leave_early(self):

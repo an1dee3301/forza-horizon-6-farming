@@ -27,6 +27,8 @@ def prepare_filter(nav):
     from .garage import set_favorites
     from .profiles import load_profile
 
+    nav.cleanup_duplicates_disabled = False
+    nav.cleanup_verified_empty = False
     # Cleanup cannot remove the active car. The single Favorite is the 22B.
     nav.select_farm_car(load_profile())
     nav.ensure_home()
@@ -39,7 +41,25 @@ def prepare_filter(nav):
     for label in FILTERS:
         toggle_filter(nav, label)
     nav.key('esc')
-    return nav.wait('garage_grid', previous='garage_filter')
+    result = nav.wait({'garage_grid', 'no_cars'}, previous='garage_filter')
+    if result.screen == 'no_cars':
+        # No duplicate survives the exact S1 + Drift + Duplicates filter.
+        # Acknowledge into Filter Selection and turn only Duplicates off so
+        # the final single copy, if any, becomes visible and removable.
+        nav.key('enter')
+        nav.wait('garage_filter', previous='no_cars')
+        toggle_filter(nav, 'Duplicates')
+        nav.key('esc')
+        result = nav.wait({'garage_grid', 'no_cars'}, previous='garage_filter')
+        nav.cleanup_duplicates_disabled = True
+        if result.screen == 'no_cars':
+            # Both duplicate states are empty. Restore a usable grid for the
+            # next route while retaining the two-screen zero proof.
+            nav.key('enter')
+            nav.wait('garage_filter', previous='no_cars')
+            result = set_favorites(nav, False)
+            nav.cleanup_verified_empty = True
+    return result
 
 
 def empty_grid(obs):

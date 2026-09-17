@@ -4,14 +4,14 @@ import textwrap
 from datetime import datetime
 
 from .report_charts import timed, value_axis, trend_axis
-from .report_theme import BG, FG, GREEN, RED, AMBER, CYAN, MUTED, GRID, BORDER
+from .report_theme import BG, SURFACE, FG, GREEN, RED, AMBER, CYAN, LIME, MUTED, GRID, BORDER
 from .operations_metrics import numeric, percentiles, fmt
 from .report_plotting import (farm_duration, percentile_comparison, cycle_run_chart,
                              numbered_series, observed_timeline, forza_tax_chart,
                              refill_output_chart, farm_rate_chart)
 
 
-TITLES = ('MISSION & CONVERSION', 'SP FARM', 'RELIABILITY')
+TITLES = ('MISSION & CONVERSION  任務・変換', 'SP FARM  SP獲得', 'RELIABILITY  安定性')
 FILENAMES = tuple(f'board_{i+1}.png' for i in range(3))
 
 
@@ -101,6 +101,102 @@ def cycle_comparison(cycles):
     delta={k:100*(current[k]/previous[k]-1) if comparable and previous[k]>0 else None
            for k in ('p50','p90')}
     return dict(current=current,previous=previous,percent_delta=delta)
+
+
+def _event_epoch(value):
+    try:
+        return datetime.fromisoformat(value).astimezone().timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def throughput_history(data, source):
+    """Point-in-time SW/hour series using only measurements known at each point.
+
+    Farm and conversion capacities replay the same definitions used by the live
+    headline. Missing history stays missing; it is never plotted as zero.
+    """
+    eta_rows=(data.get('eta_history') or {}).get('rows', [])
+    observations=[dict(r, _history_kind='eta') for r in eta_rows]
+    origins=[_event_epoch(r.get('at'))-r['elapsed_seconds'] for r in eta_rows
+             if _event_epoch(r.get('at')) is not None and numeric(r.get('elapsed_seconds'))]
+    origin=min(origins) if origins else None
+    if origin is not None:
+        for point in source.get('progress', []):
+            stamp=_event_epoch(point.get('at'))
+            earned=point.get('earned')
+            if stamp is not None and stamp >= origin and type(earned) is int and earned >= 0:
+                observations.append(dict(point, _history_kind='progress',
+                                         elapsed_seconds=stamp-origin))
+    observations.sort(key=lambda r:(_event_epoch(r.get('at')) or float('inf'),
+                                    r.get('_history_kind') != 'progress'))
+    cycles=sorted((r for r in source.get('cycles', [])
+                   if numeric(r.get('elapsed_seconds')) and r['elapsed_seconds'] > 0
+                   and _event_epoch(r.get('ended_at')) is not None),
+                  key=lambda r:_event_epoch(r['ended_at']))
+    farms=sorted((r for r in source.get('farms', [])
+                  if _event_epoch(r.get('ended_at')) is not None),
+                 key=lambda r:_event_epoch(r['ended_at']))
+    rows=[]
+    for observation in observations:
+        stamp=_event_epoch(observation.get('at'))
+        elapsed=observation.get('elapsed_seconds')
+        if stamp is None or not numeric(elapsed) or elapsed < 0:
+            continue
+        known_cycles=[r for r in cycles if _event_epoch(r['ended_at']) <= stamp][-80:]
+        conversion_seconds=sum(r['elapsed_seconds'] for r in known_cycles)
+        conversion=(len(known_cycles)*3600/conversion_seconds
+                    if known_cycles and conversion_seconds > 0 else None)
+
+        known_farms=[r for r in farms if _event_epoch(r['ended_at']) <= stamp]
+        explicit=[(i,str(r.get('share_code','')).replace(' ',''))
+                  for i,r in enumerate(known_farms)
+                  if str(r.get('share_code','')).replace(' ','').isdigit()
+                  and len(str(r.get('share_code','')).replace(' ','')) == 9]
+        eligible=[]
+        if explicit:
+            profile=explicit[-1][1]
+            start=max((i+1 for i,code in explicit if code != profile), default=0)
+            for farm in known_farms[start:]:
+                before,after,gain=(farm.get(k) for k in ('before_sp','after_sp','gained_sp'))
+                seconds=farm.get('active_seconds')
+                if (str(farm.get('share_code','')).replace(' ','') == profile
+                        and not farm.get('partial_timing') and type(before) is int
+                        and type(after) is int and 0 <= before <= after <= 999
+                        and numeric(gain) and gain == after-before
+                        and numeric(seconds) and seconds > 0):
+                    eligible.append(farm)
+        farm_seconds=sum(r['active_seconds'] for r in eligible)
+        farm=(sum(r['gained_sp'] for r in eligible)*3600/farm_seconds/21
+              if eligible and farm_seconds > 0 else None)
+        combined=(1/(1/farm+1/conversion)
+                  if numeric(farm) and farm > 0 and numeric(conversion) and conversion > 0 else None)
+        active_seconds=observation.get('active_seconds')
+        target,remaining=observation.get('target'),observation.get('remaining')
+        earned=observation.get('earned')
+        if not (type(earned) is int and earned >= 0):
+            earned=target-remaining if numeric(target) and numeric(remaining) and target >= remaining else None
+        active=observation.get('active_throughput_sw_hour')
+        if not numeric(active):
+            active=(earned*3600/active_seconds
+                    if numeric(earned) and numeric(active_seconds) and active_seconds > 0 else None)
+        farm_recorded=observation.get('farm_capacity_sw_hour')
+        conversion_recorded=observation.get('conversion_capacity_sw_hour')
+        combined_recorded=observation.get('combined_capacity_sw_hour')
+        if numeric(farm_recorded): farm=farm_recorded
+        if numeric(conversion_recorded): conversion=conversion_recorded
+        if numeric(combined_recorded): combined=combined_recorded
+        wall=observation.get('throughput_sw_hour')
+        if not numeric(wall) and numeric(earned) and elapsed > 0:
+            wall=earned*3600/elapsed
+        rows.append(dict(hours=elapsed/3600, farm=farm, conversion=conversion,
+                         combined=combined, active=active,
+                         wall=wall if numeric(wall) and wall >= 0 else None,
+                         farm_n=len(eligible), conversion_n=len(known_cycles)))
+    if len(rows) > 360:
+        indexes=sorted({round(i*(len(rows)-1)/359) for i in range(360)})
+        rows=[rows[i] for i in indexes]
+    return rows
 
 
 def report_context(data, op, cycles, page):
@@ -249,9 +345,15 @@ def farm_header(op, completed_runs):
 
 
 def build_boards(data, game_image=None):
+    import matplotlib as mpl
     from matplotlib.figure import Figure
     from matplotlib.backends.backend_agg import FigureCanvasAgg
+    from matplotlib.patches import Rectangle
     from matplotlib.ticker import MaxNLocator
+
+    # Bahnschrift supplies the FH-like condensed display rhythm; Yu Gothic
+    # keeps the small Japanese wayfinding labels native and readable.
+    mpl.rcParams['font.family'] = ['Bahnschrift', 'Yu Gothic', 'DejaVu Sans']
 
     source = data.get('charts') or {}
     matched = bool(data.get('goal_id')) and source.get('goal_id') == data.get('goal_id')
@@ -294,8 +396,18 @@ def build_boards(data, game_image=None):
             axes = [fig.add_subplot(grid[row,col]) for row in range(3) for col in range(2)]
         fig.subplots_adjust(left=.12, right=.97, top=.66, bottom=.12 if count==6 else .17 if count==4 else .14 if count==5 else .09,
                             hspace=.55 if count == 4 else .65 if count == 5 else .8, wspace=.44)
-        fig.text(.045, .979, f'FH6 // {index+1}/3  {TITLES[index]}', color=GREEN, fontsize=30, va='top')
-        fig.text(.53,.958,'CURRENT RUN · LIVE MEASUREMENTS',color=MUTED,fontsize=14,va='top')
+        # The report shares the game's wide menu-strip language without using
+        # game art: cyan navigation, pink focus, and yellow notification rail.
+        fig.add_artist(Rectangle((0, .993), .72, .007, transform=fig.transFigure,
+                                 facecolor=GREEN, edgecolor='none', zorder=20))
+        fig.add_artist(Rectangle((.72, .993), .22, .007, transform=fig.transFigure,
+                                 facecolor=RED, edgecolor='none', zorder=20))
+        fig.add_artist(Rectangle((.94, .993), .06, .007, transform=fig.transFigure,
+                                 facecolor=AMBER, edgecolor='none', zorder=20))
+        fig.add_artist(Rectangle((.035, .964), .93, .027, transform=fig.transFigure,
+                                 facecolor=SURFACE, edgecolor=BORDER, linewidth=1, zorder=-1))
+        fig.text(.045, .979, f'HORIZON JAPAN // {index+1}/3  {TITLES[index]}', color=FG, fontsize=30, va='top',weight='bold')
+        fig.text(.53,.958,'CURRENT RUN · LIVE MEASUREMENTS  現在の運行',color=MUTED,fontsize=14,va='top')
         fig.text(.53,.942,'Snapshot '+data.get('timestamp','unavailable'),color=MUTED,fontsize=13,va='top')
         if strip:
             from PIL import Image
@@ -318,8 +430,9 @@ def build_boards(data, game_image=None):
                  'Forza tax = observed residual; polling/pacing excluded · Causal game share unmeasured · Cycle gaps outside recorder excluded\n'
                  + account_summary(data) + '\n' + data.get('timestamp','') + ' | Mission ' + data.get('goal_id','unknown'),
                  color=MUTED, fontsize=15, va='bottom', linespacing=1.4)
-        for ax in axes:
-            ax.set_facecolor(BG)
+        menu_accents = (GREEN, RED, AMBER, CYAN)
+        for position, ax in enumerate(axes):
+            ax.set_facecolor(SURFACE)
             ax.tick_params(colors=FG, labelsize=15)
             ax.xaxis.label.set(color=MUTED, size=16)
             ax.yaxis.label.set(color=MUTED, size=16)
@@ -327,6 +440,8 @@ def build_boards(data, game_image=None):
             ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
             for spine in ax.spines.values():
                 spine.set_color(BORDER)
+            ax.spines['top'].set_color(menu_accents[position % len(menu_accents)])
+            ax.spines['top'].set_linewidth(2.4)
             ax.grid(axis='y', color=GRID, linewidth=.8)
             ax.set_axisbelow(True)
         boards.append(fig)
@@ -341,7 +456,7 @@ def build_boards(data, game_image=None):
         ax.set_xticks([]); ax.set_yticks([])
 
     def legend(ax):
-        ax.legend(facecolor=BG, edgecolor=BORDER, labelcolor=FG, fontsize=14)
+        ax.legend(facecolor=SURFACE, edgecolor=BORDER, labelcolor=FG, fontsize=14)
 
     def bars(ax, values, label, color=GREEN, target_value=None):
         valid = [(str(k).replace('_', ' '), v) for k,v in values.items() if numeric(v) and v>=0]
@@ -385,18 +500,34 @@ def build_boards(data, game_image=None):
         a[0].set_xlabel('Hours; dots = Home readings · × = verified rewards since Home')
         a[0].set_ylabel('Saved inventory')
     else:empty(a[0],'Awaiting actual saved-spin readings')
-    title(a[1], '02 · Capacity and sequential throughput')
-    bars(a[1],{k:op.get(v) for k,v in [('SP farm','farm_capacity'),('Conversion','conversion_capacity'),('Sequential combined','combined_capacity')]},'Cars / hour; same game performs stages sequentially')
+    title(a[1], '02 · Live throughput | all rates in SW/h')
+    performance=throughput_history(data,source)
+    styles=[('conversion','Conversion capacity',CYAN,'-'),
+            ('farm','SP farm capacity',GREEN,'-'),
+            ('combined','Sequential combined',AMBER,'--'),
+            ('active','Actual active','#a78bfa','-.'),
+            ('wall','Actual wall',RED,':')]
+    plotted=[]
+    for field,label,color,style in styles:
+        xs=[r['hours'] for r in performance if numeric(r.get(field))]
+        ys=[r[field] for r in performance if numeric(r.get(field))]
+        if ys:
+            a[1].plot(xs,ys,color=color,linestyle=style,linewidth=2,
+                      label=f'{label} · {ys[-1]:.1f}')
+            plotted.extend(ys)
+    if plotted:
+        trend_axis(a[1],plotted,minimum_span=5)
+        legend(a[1])
+        a[1].set_xlabel('Elapsed wall-clock hours since mission start')
+        a[1].set_ylabel('Super Wheelspins per hour')
+        latest=performance[-1]
+        a[1].text(0,-.35,
+                  f"Latest coverage: {latest['farm_n']} complete farm runs · {latest['conversion_n']} conversion cars\n"
+                  'Capacity lines use measured stage time; actual lines include the full active or wall clock.',
+                  transform=a[1].transAxes,color=MUTED,fontsize=12,va='top')
+    else:
+        empty(a[1],'Awaiting timestamped farm, conversion, and output measurements')
     rate=op.get('rate_coverage') or {}
-    farm_n=rate.get('farm_n',op.get('farm_rate_samples',0))
-    conversion_n=rate.get('conversion_n',op.get('conversion_rate_samples',0))
-    farm_profile=rate.get('farm_profile') or 'profile unrecorded'
-    farm_hours=rate.get('farm_seconds')
-    coverage=(f"Farm: {farm_n} timed runs ({farm_profile})"
-              + (f" / {farm_hours/3600:.2f}h" if numeric(farm_hours) else '')
-              +f" · Conversion: {conversion_n} cars")
-    a[1].text(0,-.39,coverage+'\nCombined = 1 / (1/farm + 1/conversion); estimated capacity, not observed SW/h',
-              transform=a[1].transAxes,color=MUTED,fontsize=12,va='top')
     title(a[2], '03 · Buy → mastery → return | last 80')
     if cycles: cycle_run_chart(a[2],cycles,target=target,start=cycle_offset+1)
     else: empty(a[2])
@@ -452,7 +583,7 @@ def build_boards(data, game_image=None):
     if not farm_rows:
         empty(a[4])
 
-    a = board(2,report_context(data,op,cycles,2),8)
+    a = board(2,report_context(data,op,cycles,2),9)
     causes=op.get('failures',{})
     covered=[r for r in cycles if r.get('recovery_tracking_version')==2]
     title(a[0], '15 · Conversion retries / 100 instrumented cars')
@@ -507,6 +638,30 @@ def build_boards(data, game_image=None):
         a[7].set_ylabel('Mad Mike cars')
         legend(a[7])
     else:empty(a[7],'Cleanup history will appear after a confirmed removal')
+    title(a[8], '23 · Remaining ETA / efficiency vs initial ETA')
+    eta_rows=(data.get('eta_history') or {}).get('rows',[])
+    if eta_rows:
+        if len(eta_rows)>360:
+            eta_rows=[eta_rows[i] for i in sorted({round(j*(len(eta_rows)-1)/359)
+                                                   for j in range(360)})]
+        x=[r['elapsed_seconds']/3600 for r in eta_rows]
+        a[8].plot(x,[r['eta_seconds']/3600 for r in eta_rows],color=CYAN,marker='.',label='Remaining ETA (h)')
+        from .eta_history import baseline, zoom_bounds, runtime_window
+        baseline_start,baseline_eta=baseline(data['eta_history'])
+        baseline_values=[max(0,baseline_eta-(r['elapsed_seconds']-baseline_start))/3600 for r in eta_rows]
+        a[8].plot(x,baseline_values,color=AMBER,linestyle='--',linewidth=2,label='Real-time baseline')
+        a[8].set_xlim(*(v/3600 for v in runtime_window(data['eta_history'])))
+        a[8].set_ylim(*zoom_bounds([r['eta_seconds']/3600 for r in eta_rows]+baseline_values,1/60))
+        a[8].legend(loc='upper right',fontsize=10,facecolor=SURFACE,labelcolor=FG)
+        right=a[8].twinx()
+        right.plot(x,[r['efficiency_percent'] for r in eta_rows],color=GREEN,marker='.',label='Efficiency (%)')
+        right.set_ylim(*zoom_bounds([r['efficiency_percent'] for r in eta_rows],.1))
+        right.tick_params(colors=GREEN);right.set_ylabel('Gain (%)',color=GREEN)
+        a[8].figure.subplots_adjust(right=.92)
+        a[8].set_xlabel('Elapsed wall-clock hours; efficiency includes ordinary progress')
+        a[8].set_ylabel('Remaining ETA (hours)',color=CYAN)
+        a[8].tick_params(axis='y',colors=CYAN)
+    else:empty(a[8],'Awaiting first measured ETA; interactive tooltips in Analytics')
     for fig in boards:
         for ax in fig.axes:
             ax.set_xlabel(textwrap.fill(ax.get_xlabel(),60))

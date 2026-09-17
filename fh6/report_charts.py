@@ -5,7 +5,7 @@ from datetime import datetime
 from statistics import median
 
 from .chart_data import number
-from .report_theme import BG, FG, GREEN, RED, AMBER, CYAN, MUTED, GRID, BORDER
+from .report_theme import BG, SURFACE, FG, GREEN, RED, AMBER, CYAN, MUTED, GRID, BORDER
 
 HEADROOM = 1.08
 
@@ -130,7 +130,7 @@ def render_charts(data, *, focused=False):
         fig.text(.055, .022, 'Current mission measurements only. Missing data stays empty. '
                  'Newly earned mission output is separate from actual saved inventory.', color=MUTED, fontsize=11)
         for ax in axes:
-            ax.set_facecolor(BG)
+            ax.set_facecolor(SURFACE)
             ax.tick_params(colors=FG, labelsize=10)
             ax.xaxis.label.set_color(MUTED)
             ax.yaxis.label.set_color(MUTED)
@@ -215,7 +215,7 @@ def render_charts(data, *, focused=False):
         offset=offset if type(offset) is int and offset>=0 else 0
         cycle_run_chart(ax,cycles,target=data.get('cycle_target_seconds',30),start=offset+1)
         for text in ax.texts: text.set_fontsize(9)
-        ax.legend(facecolor=BG,labelcolor=FG,fontsize=9,loc='lower right')
+        ax.legend(facecolor=SURFACE,labelcolor=FG,fontsize=9,loc='lower right')
     else:
         empty(ax)
 

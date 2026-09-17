@@ -1,5 +1,5 @@
 """Discord farm-start events, independent of reward delivery checkpoints."""
-from datetime import datetime
+from datetime import datetime, timedelta
 
 
 def planned_farm_remaining(remaining, elapsed, refill_plan):
@@ -16,7 +16,8 @@ def planned_farm_remaining(remaining, elapsed, refill_plan):
 
 def active_farm(goal, challenge, runtime, *, active, timestamp):
     identifier = challenge.get('id', '')
-    if (not active or not runtime.get('active') or goal.get('phase') != 'farm'
+    if (not active or not runtime.get('active')
+            or goal.get('phase') not in {'farm', 'terminal_sp_topup'}
             or challenge.get('phase') != 'drive'
             or not identifier.startswith(str(goal.get('id'))+'_')
             or runtime.get('stage') != 'farm_drive'
@@ -39,13 +40,29 @@ def farm_due(data, saved):
     return bool(event and event['key'] not in saved.get('sent_keys', []))
 
 
-def observed_time(value):
+def discord_time(value, style='R'):
     if not value:
         return 'Not yet verified'
     try:
         stamp = datetime.fromisoformat(value)
         if stamp.tzinfo is None:
             stamp = stamp.astimezone()
-        return f'<t:{int(stamp.timestamp())}:R>'
+        return f'<t:{int(stamp.timestamp())}:{style}>'
     except (ValueError, TypeError):
         return 'Time unavailable'
+
+
+def projected_time(reference, seconds, style='R'):
+    try:
+        if type(seconds) not in (int, float) or seconds < 0:
+            return 'Time unavailable'
+        stamp = datetime.fromisoformat(reference)
+        if stamp.tzinfo is None:
+            stamp = stamp.astimezone()
+        return f'<t:{int((stamp+timedelta(seconds=seconds)).timestamp())}:{style}>'
+    except (ValueError, TypeError):
+        return 'Time unavailable'
+
+
+def observed_time(value):
+    return discord_time(value, 'R')

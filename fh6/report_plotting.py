@@ -4,7 +4,7 @@ from statistics import median
 
 from .operations_metrics import numeric, percentiles
 from .report_charts import value_axis, trend_axis, focused_limits
-from .report_theme import BG, FG, GREEN, AMBER, CYAN, MUTED, GRID
+from .report_theme import BG, SURFACE, FG, GREEN, AMBER, CYAN, MUTED, GRID
 
 
 def observed_timeline(ax, rows, field, stamp='at', *, divisor=1, addition=0,
@@ -81,12 +81,12 @@ def cycle_run_chart(ax, cycles, *, target=30, start=1, window=80):
         note='; '.join(f'#{xs[i]} {values[i]:.1f}s' for i in ranked[:3])
         ax.text(.015,.97,f'Off-scale {len(marked)}: {note}'+(' …' if len(marked)>3 else '')+
                 '\nAll retained in statistics',transform=ax.transAxes,va='top',fontsize=12,color=AMBER,
-                bbox=dict(facecolor=BG,edgecolor='none',alpha=.93))
+                bbox=dict(facecolor=SURFACE,edgecolor='none',alpha=.93))
     ax.set_ylim(25,60);ax.set_yticks(range(25,61,5))
     ax.xaxis.set_major_locator(MaxNLocator(nbins=6,integer=True))
     ax.set_xlabel('Completed sample in retained mission history')
     ax.set_ylabel('Recorded cycle seconds')
-    ax.legend(loc='lower right',facecolor=BG,edgecolor=GRID,labelcolor=FG,fontsize=13)
+    ax.legend(loc='lower right',facecolor=SURFACE,edgecolor=GRID,labelcolor=FG,fontsize=13)
 
 
 def residual_rows(cycles):
@@ -129,7 +129,7 @@ def forza_tax_chart(ax, cycles, *, start=1, number=3):
     ax.text(.02,.98,f'Plotted cohort: weighted {mean:.2f}% · {len(valid)}/{len(rows)} cars covered\n'
             f'{sum(r[2] for r in valid):,} usable transitions · {partial:,} incomplete',
             transform=ax.transAxes,va='top',color=MUTED,fontsize=12,
-            bbox=dict(facecolor=BG,edgecolor='none',alpha=.9))
+            bbox=dict(facecolor=SURFACE,edgecolor='none',alpha=.9))
     ax.text(0,-.25,'Input→usable less measured polling/pacing. Causal game share unmeasured.',
             transform=ax.transAxes,color=MUTED,fontsize=12)
     ax.legend(loc='lower right',frameon=False,labelcolor=FG,fontsize=11)
@@ -401,7 +401,7 @@ def farm_rate_chart(ax, farms, *, share_code=None, number=14, window=20):
     ax.set_xlabel('Farm run in retained mission history')
     ax.set_ylabel('Retained SP / recorded active hour')
     ax.grid(False);ax.grid(axis='y',color=GRID,linewidth=.8)
-    ax.legend(loc='lower right',facecolor=BG,edgecolor=GRID,labelcolor=FG,fontsize=10)
+    ax.legend(loc='lower right',facecolor=SURFACE,edgecolor=GRID,labelcolor=FG,fontsize=10)
     recent5=next((v for v in reversed(rolling) if numeric(v)),None)
     summary=f'Cohort {cohort_rate:,.0f} SP/h = {cohort_rate/21:,.1f} cars/h'
     if numeric(recent5): summary+=f' · rolling 5 {recent5:,.0f} SP/h'

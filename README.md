@@ -42,13 +42,42 @@ Analytics, report rendering, account OCR, and diagnostics run in background work
 
 Mega Farm V6 is the production profile. Full runs handle bulk refill; shortened top-ups stop near the SP needed for the next car batch. Mini Farm V2 (`169 055 890`) remains available for measurement but was slower in the completed trial on retained SP per active farm hour.
 
-The completed operation measured a final 20-car conversion P50 of 46.7 seconds and P90 of 57.5 seconds. The 30-second target was not reached.
+Phase 2 measured a full-run conversion P50 of 45.4 seconds and P90 of 54.3 seconds; its final 20 cars measured 46.6 seconds and 56.0 seconds. The 30-second target was not reached.
 
 ## Analytics and Discord
 
 The Analytics page records cycle and stage P50/P90/P99, transition and recovery timing, first-pass yield, retries by cause, recovery cost, active and wall-clock SW/hour, retained SP/hour, farm and conversion capacity, cap flags, crashes, credits, SP, level, prestige, purchases, processing, and removals.
 
 Discord reporting is optional. The webhook is encrypted with Windows DPAPI under the current user profile and is never stored in the repository.
+
+## Phase 2 complete: run to credit exhaustion
+
+**Period:** 2026-09-15 10:51 to 2026-09-17 20:39 JST<br>
+**Result:** 1,281 new Super Wheelspins from 1,281 purchased and processed Mazdas<br>
+**Terminal proof:** 11,170 CR, 999 SP, zero Mad Mikes remaining
+
+| Measurement | Phase 2 |
+|---|---:|
+| Final saved inventory | **2,482 SW · 221 WS** |
+| Cycle P50 / P90 / P99 | **45.44s / 54.33s / 58.96s** |
+| First-pass yield | **97.11%** |
+| Conversion capacity | **63.3 cars/h** |
+| Farm capacity | **49.8 cars/h** |
+| Retained farm rate | **1,045 SP/h** |
+| Verified output | **27.65 SW/h active · 22.16 SW/h wall** |
+| Farm runs | **104** |
+| Gross Mazda spend | **121,695,000 CR** |
+| Broad retries / crashes | **297 / 7** |
+| Recorded Phase 2 removals | **1,277** |
+
+The last direct My Horizon read was 2,481 SW; the final verified mastery reward gives the 2,482 hybrid total. The complete report includes every stage percentile, farm profile, credit bridge, failure cost, cleanup evidence, charts, methods, limitations, and a Phase 1 comparison.
+
+- [Open the full Phase 2 report](docs/phase-2-report/REPORT.md)
+- [Inspect the reviewed Phase 2 snapshot](docs/phase-2-report/reviewed_snapshot.json)
+
+![Phase 2 conversion timeline](docs/phase-2-report/charts/02_cycle_timeline.png)
+
+![Phase 2 farm throughput](docs/phase-2-report/charts/04_farm_throughput.png)
 
 ## Complete operation data
 

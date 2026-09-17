@@ -15,7 +15,7 @@ import uuid
 from PIL import Image, ImageDraw, ImageFont
 import forza_cycle as core
 from .report_secrets import validate_url
-from .report_theme import BG, FG, GREEN, AMBER, MUTED, GRID, BORDER
+from .report_theme import BG, SURFACE, FG, GREEN, RED, AMBER, MUTED, GRID, BORDER
 
 
 RUNS = core.BASE/'runs'
@@ -170,6 +170,16 @@ class AccountObserver:
                 base=doc if tag.casefold() in text.casefold() else obs.doc
                 doc=Document(list(base.lines)+[Text(yellow,(1750,45,130,30))])
                 text,values=header(doc)
+        # A normal OCR pass can repeatedly lose the leading groups of a long
+        # yellow balance.  When the independently preprocessed yellow-only
+        # crop is readable, it must agree with the header result.  A conflict
+        # invalidates the observation instead of choosing either value.
+        if (reader is not None and compact is None and tag.casefold() in text.casefold()
+                and len(values) == 1):
+            from .account_header import read_yellow_credits
+            yellow = read_yellow_credits(obs.frame, reader)
+            if yellow is not None and int(yellow.replace(',', '')) != int(values[0].replace(',', '')):
+                values = []
         if tag.casefold() not in text.casefold() or len(values) != 1:
             self.previous = None
             self.previous_level = None
@@ -411,7 +421,20 @@ def snapshot(root=RUNS, *, active=None, game=None, note=None):
                 basis='committed_purchase_adjusted', estimate_only=True)
         balance = account.get('credits')
         balance_age = age_seconds(account.get('observed_at'))
-        if (type(balance) is int and balance >= 0 and balance_age is not None
+        # A twice-read OCR suffix is still capable of looking newer than the
+        # guarded batch budget.  Do not let that display-only observation
+        # replace the canonical balance unless its decrease can be explained
+        # by the purchases made in the current batch (plus a small allowance
+        # for unrelated game transactions).  Purchase authorization has the
+        # stricter ledger check in credit_limit.py; this protects reporting.
+        plausible_balance = True
+        if credit_estimate is not None and type(balance) is int:
+            prior = credit_estimate.get('credits')
+            batch = goal.get('batch') or {}
+            recent_buys = batch.get('bought_seen', 0)
+            if type(prior) is int and type(recent_buys) is int and balance < prior:
+                plausible_balance = prior-balance <= (max(0, recent_buys)+2)*95000+25000
+        if (type(balance) is int and balance >= 0 and balance_age is not None and plausible_balance
                 and (credit_estimate is None or balance_age < credit_estimate['age_seconds'])):
             purchases = balance//95000
             credit_estimate = dict(affordable_new_cars=purchases, pending_cars=pending,
@@ -425,11 +448,13 @@ def snapshot(root=RUNS, *, active=None, game=None, note=None):
         verified_rewards_after_sync=inventory.get('verified_rewards_after_sync',0))
         if inventory.get('current_run') else None)
     cleanup = analytics.get('garage_cleanup') or {}
-    removed = cleanup.get('removed', 0) if type(cleanup.get('removed', 0)) is int else 0
-    journal_removed = latest_jsonl(root/'analytics_garage_cleanup.jsonl').get('removed_total')
-    if type(journal_removed) is int and journal_removed > removed:
-        cleanup['removed'] = removed = journal_removed
-        analytics['garage_cleanup'] = cleanup
+    removed = charts.get('garage_cleanup_total', 0)
+    offset = max(0, cleanup.get('removed',0)-removed)
+    cleanup = dict(cleanup, removed=removed)
+    for field in ('session_start_removed','removed_at_verified_empty'):
+        if type(cleanup.get(field)) is int:
+            cleanup[field] = max(0,cleanup[field]-offset)
+    analytics['garage_cleanup'] = cleanup
     bought = goal.get('bought', 0)
     processed = min(bought, earned)
     empty_bought=cleanup.get('bought_at_verified_empty', 0)
@@ -460,7 +485,7 @@ def snapshot(root=RUNS, *, active=None, game=None, note=None):
 
 
 def payload(data):
-    from .farm_notices import observed_time
+    from .farm_notices import discord_time, observed_time, projected_time
     account = data.get('account', {})
     credits = account.get('credits')
     account_text = account.get('gamertag', 'Not yet observed')
@@ -501,7 +526,7 @@ def payload(data):
         ('Account', account_text),
         ('Remaining credit budget', budget_text),
         ('Sync', data['sync']),
-        ('Run window', data.get('deadline') or 'No deadline configured'),
+        ('Run window', discord_time(data.get('deadline'),'F') if data.get('deadline') else 'No deadline configured'),
         ('Recorded activity', f"{data.get('active_seconds', 0)/3600:.2f} active hours\n{data['bought']*95000:,} CR in confirmed Mazda purchases\n{data['earned']*21:,} SP in completed mastery paths"),
     ]
     analytics = data.get('analytics', {})
@@ -524,7 +549,7 @@ def payload(data):
                 f"First-pass yield {fmt(op['first_pass_yield'])}% ({op['first_pass_samples']} instrumented cars)\n"
                 f"Unassigned overhead: {fmt(op['forza_tax_percent_estimated'],'%')} (polling/pacing excluded)\n"
                 'Actual causal Forza share: unmeasured.'))
-        fields.append(('Completion estimate', f"{analytics['eta_seconds']/3600:.1f}–{analytics['eta_upper_seconds']/3600:.1f} hours remaining\nAbout {analytics['farms_remaining']} farm runs\n{analytics['cycle_seconds']:.1f}s median per car\nEstimate only; pauses and recovery may extend it."))
+        fields.append(('Completion estimate', f"Finish {projected_time(data.get('timestamp'),analytics['eta_seconds'])} to {projected_time(data.get('timestamp'),analytics['eta_upper_seconds'])}\nAbout {analytics['farms_remaining']} farm runs\n{analytics['cycle_seconds']:.1f}s median per car\nEstimate only; pauses and recovery may extend it."))
     if data.get('report_kind') == 'farm_start':
         farm = data['farm_event']
         fields.insert(0, ('SP farm started', f"Mega V6 · {farm.get('share_code')}\nStarting SP: {farm.get('before_sp')} / 999\nChallenge run {data['farms']+1} · attempt {farm['attempt']}"))
@@ -533,8 +558,8 @@ def payload(data):
             runs = math.ceil(max(0,999-farm['before_sp'])/analytics['sp_per_farm'])
             fields.insert(1, ('Refill estimate', f"About {runs} challenge runs / {runs*analytics.get('farm_seconds', 0)/60:.0f} minutes to 999 SP\nThen up to 47 Mad Mikes; estimate includes this run."))
     periodic = data.get('report_kind') == 'status'
-    body = {'username': 'FH6 Mission Control', 'allowed_mentions': {'parse': []},
-        'embeds': [{'title': 'FH6 // MINUTE STATUS' if periodic else ('FH6 // SP FARM STARTED' if data.get('report_kind') == 'farm_start' else 'FH6 // WHEELSPIN EARNED'), 'description': data['status'],
+    body = {'username': 'FH6 Horizon Japan Control', 'allowed_mentions': {'parse': []},
+        'embeds': [{'title': 'HORIZON JAPAN // LIVE STATUS' if periodic else ('HORIZON JAPAN // SP FARM STARTED' if data.get('report_kind') == 'farm_start' else 'HORIZON JAPAN // WHEELSPIN EARNED'), 'description': data['status'],
             'color': int((GREEN if data['active'] else AMBER)[1:], 16),
             'fields': [{'name': name, 'value': value[:1024], 'inline': not periodic} for name, value in fields],
             'timestamp': data['timestamp'], 'image': {'url': 'attachment://mission.png'},
@@ -550,13 +575,16 @@ def render(data):
     """A readable image of verified progress, without capturing other apps."""
     canvas = Image.new('RGB', (1120, 670), BG)
     draw = ImageDraw.Draw(canvas)
-    font_path = Path('C:/Windows/Fonts/consola.ttf')
+    font_path = Path('C:/Windows/Fonts/bahnschrift.ttf')
     def font(size):
         return ImageFont.truetype(str(font_path), size) if font_path.exists() else ImageFont.load_default(size=size)
     def label(x, y, value, size=22, fill=FG):
         draw.text((x, y), str(value), font=font(size), fill=fill)
-    draw.rectangle((24, 24, 1096, 646), outline=BORDER, width=2)
-    label(48, 43, 'FH6 // MISSION CONTROL', 30, GREEN)
+    draw.rectangle((24, 24, 1096, 646), fill=SURFACE, outline=BORDER, width=2)
+    draw.rectangle((24, 24, 780, 32), fill=GREEN)
+    draw.rectangle((780, 24, 1032, 32), fill=RED)
+    draw.rectangle((1032, 24, 1096, 32), fill=AMBER)
+    label(48, 43, 'HORIZON JAPAN // MISSION CONTROL', 30, FG)
     label(48, 97, f"{data.get('total_progress',data['earned'])} / {data.get('total_target',data['target'])}", 64)
     label(560, 120, f"{data['remaining']} REMAINING", 30, AMBER)
     draw.rectangle((48, 185, 1072, 208), fill=GRID)
@@ -633,20 +661,26 @@ def send(url, data, *, opener=None, game_image=None):
     url = validate_url(url)
     boundary = 'fh6-'+uuid.uuid4().hex
     message_payload = payload(data)
+    from .farm_notices import discord_time
     periodic = data.get('report_kind') == 'status'
     if periodic:
         from .report_boards import render_boards, summary_lines, account_summary
         boards = render_boards(data, game_image)
-        files = [(name, blob, 'image/png') for name,blob,title in boards]
         first = message_payload['embeds'][0]
-        message_payload['attachments'] = [{'id':i,'filename':name} for i,(name,blob,title) in enumerate(boards)]
-        gallery = [{'media':{'url':'attachment://'+name}, 'description':f'{i+1}/3: {title}'}
-                   for i,(name,blob,title) in enumerate(boards)]
+        capture = data.get('game_capture') or {}
+        live_farm = capture.get('capture_policy') == 'active_challenge_v1'
+        image_label = 'SP challenge · live farm capture' if live_farm else 'My Horizon / Return Home'
+        files = []
+        gallery = []
         if game_image:
             files.append(('game.jpg', game_image[0], 'image/jpeg'))
-            message_payload['attachments'].append({'id':len(files)-1,'filename':'game.jpg'})
             gallery.append({'media':{'url':'attachment://game.jpg'},
-                            'description':'My Horizon / Return Home · captured '+game_image[1]})
+                            'description':image_label+' · captured '+discord_time(game_image[1],'F')})
+        files.extend((name, blob, 'image/png') for name,blob,title in boards)
+        gallery.extend({'media':{'url':'attachment://'+name}, 'description':f'{i+1}/3: {title}'}
+                       for i,(name,blob,title) in enumerate(boards))
+        message_payload['attachments'] = [
+            {'id':i,'filename':name} for i,(name,blob,mime) in enumerate(files)]
         message_payload.pop('content', None)
         from .report_status import status_text
         text_body = status_text(data)
@@ -656,7 +690,9 @@ def send(url, data, *, opener=None, game_image=None):
             {'type':10, 'content':text_body},
             {'type':12, 'items':gallery},
             {'type':10, 'content':'-# '+
-             ('My Horizon captured '+game_image[1]+'.' if game_image else 'Waiting for a verified My Horizon / Return Home screenshot.')}]}]
+             (image_label+' captured '+discord_time(game_image[1],'F')+'.' if game_image else
+              ('Waiting for a fresh verified challenge screenshot.' if data.get('farm_event') else
+               'Waiting for a verified My Horizon / Return Home screenshot.'))}]}]
         from .account_header import latest_strip
         strip = latest_strip(game_image,data)
         if strip:
@@ -664,14 +700,14 @@ def send(url, data, *, opener=None, game_image=None):
             message_payload['attachments'].append({'id':len(files)-1,'filename':'account_strip.png'})
             message_payload['components'][0]['components'].insert(0, {'type':12,'items':[
                 {'media':{'url':'attachment://account_strip.png'},
-                 'description':'Account / level / prestige / credits · captured '+strip[1]+' · not live'}]})
+                 'description':'Account / level / prestige / credits · captured '+discord_time(strip[1],'F')+' · not live'}]})
     else:
         files = [('mission.png', render(data), 'image/png')]
     if game_image and not periodic:
         files.append(('game.jpg', game_image[0], 'image/jpeg'))
         message_payload['attachments'].append({'id': 1, 'filename': 'game.jpg'})
         message_payload['embeds'].append({'title': 'My Horizon / Return Home',
-            'description': 'Captured '+game_image[1]+' · Verified menu capture; not a live view.',
+            'description': 'Captured '+discord_time(game_image[1],'F')+' · Verified menu capture; not a live view.',
             'image': {'url': 'attachment://game.jpg'}})
     if 'charts' in data and not periodic:
         from .report_charts import render_charts

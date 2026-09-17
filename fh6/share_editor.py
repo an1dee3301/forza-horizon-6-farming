@@ -5,12 +5,24 @@ omitting those clearing keys; it never types, confirms or launches a challenge.
 The caller must still verify the exact newly entered code before submission.
 """
 import time
+import re
 
 import cv2
 import numpy as np
 
 
 FIELD = (653, 575, 614, 45)
+
+
+def exact_share_code(obs, code):
+    """Only the full numeric editor field can authorize submission."""
+    if (getattr(obs, 'screen', None) != 'share_code' or
+            not isinstance(code, str) or re.fullmatch(r'[0-9]{9}', code) is None):
+        return False
+    x, y, w, h = FIELD
+    fields = [line.text.strip() for line in obs.doc.lines
+              if x <= line.center[0] < x+w and y <= line.center[1] < y+h]
+    return fields == [code]
 
 
 def empty_share_editor(obs):

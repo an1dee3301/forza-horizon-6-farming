@@ -1,7 +1,9 @@
 import copy
 import unittest
+from types import SimpleNamespace
 
 from fh6.batching import funded_cars
+from fh6.refill_control import force_exact_target
 from fh6.refill_policy import MEGA, _legacy_plan, plan
 
 
@@ -28,6 +30,17 @@ def measured():
 
 
 class RefillPolicyTests(unittest.TestCase):
+    def test_terminal_reserve_overrides_convert_and_runs_a_bounded_topup(self):
+        normal = plan(991, 999, measured())
+        self.assertEqual(normal['mode'], 'convert')
+        forced = force_exact_target(normal, 991, 999,
+                                    SimpleNamespace(duration_seconds=900))
+        self.assertEqual(forced['mode'], 'topup')
+        self.assertEqual(forced['planned_exit'], 'target_top_up')
+        self.assertGreaterEqual(forced['planned_drive_seconds'], 60)
+        self.assertLessEqual(forced['planned_drive_seconds'], 900)
+        self.assertEqual(forced['reason'], 'terminal_exact_target')
+
     def test_actual_first_two_runs_are_bulk(self):
         for before in (3, 382):
             result = plan(before, 987, measured())
@@ -62,7 +75,8 @@ class RefillPolicyTests(unittest.TestCase):
         result = plan(620, 987, measured())
         self.assertGreater(result['expected_yield_sp'] + result['safety_margin_sp'], result['headroom_sp'])
         self.assertEqual(result['mode'], 'topup')
-        self.assertLessEqual(result['planned_drive_seconds'], 600)
+        self.assertLessEqual(result['planned_drive_seconds'], 900)
+        self.assertLessEqual(result['planned_drive_seconds'], result['headroom_drive_limit_seconds'])
 
     def test_tiny_gap_converts_actual_funded_balance(self):
         result = plan(978, 987, measured())

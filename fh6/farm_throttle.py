@@ -50,7 +50,8 @@ class ThrottleProof:
         self.stamp = self.clock()
         return self.previous is not None and remaining < self.previous[1]
 
-    def press(self, key_down):
+    def run_input(self, action):
+        """Run one input only from the current two-frame countdown proof."""
         nav = self.nav
         if self.previous is None or self.current is None or self.changed():
             return False
@@ -71,7 +72,13 @@ class ThrottleProof:
             self.reset()
             return False
         nav.invalidate_ready()
-        key_down(self.profile.accelerator)
+        action()
+        return True
+
+    def press(self, key_down):
+        if not self.run_input(lambda: key_down(self.profile.accelerator)):
+            return False
+        remaining = self.current[1]
         self.last_accepted = dict(previous_remaining_seconds=self.previous[1],
             remaining_seconds=remaining, focus_generation=self.generation,
             game_identity=list(self.identity))

@@ -3,12 +3,16 @@ import re
 import time
 from collections import Counter
 from dataclasses import dataclass
+from functools import lru_cache
+from pathlib import Path
 
 import cv2
+import numpy as np
 
 from forza_cycle import crop
 
 MASTERY_POINTS = (675, 922, 65, 31)
+ZERO_TEMPLATE = Path(__file__).resolve().parent.parent/'recognition'/'sp_zero.png'
 
 
 @dataclass(frozen=True)
@@ -64,6 +68,47 @@ def _context_readings(reader, frame):
     return readings
 
 
+def _normalise_digit(mask):
+    ys, xs = np.where(mask > 0)
+    if not len(xs):
+        return None
+    glyph = mask[ys.min():ys.max()+1, xs.min():xs.max()+1]
+    scale = min(24/glyph.shape[1], 32/glyph.shape[0])
+    glyph = cv2.resize(glyph, None, fx=scale, fy=scale,
+                       interpolation=cv2.INTER_NEAREST)
+    canvas = np.zeros((36, 28), dtype=np.uint8)
+    y, x = (36-glyph.shape[0])//2, (28-glyph.shape[1])//2
+    canvas[y:y+glyph.shape[0], x:x+glyph.shape[1]] = glyph
+    return canvas
+
+
+@lru_cache(maxsize=1)
+def _zero_template():
+    value = cv2.imread(str(ZERO_TEMPLATE), cv2.IMREAD_GRAYSCALE)
+    return value if value is not None and value.shape == (36, 28) else None
+
+
+def _opencv_zero(frame, box):
+    """Recognize the native single zero that Windows OCR consistently drops."""
+    if box != MASTERY_POINTS or frame is None or frame.shape[:2] != (1080, 1920):
+        return False
+    region = crop(frame, box)
+    mask = cv2.inRange(cv2.cvtColor(region, cv2.COLOR_BGR2HSV),
+                       (20, 110, 140), (45, 255, 255))
+    count, _, stats, _ = cv2.connectedComponentsWithStats(mask)
+    components = [tuple(map(int, stat)) for stat in stats[1:] if stat[4] >= 20]
+    if len(components) != 1:
+        return False
+    x, y, w, h, area = components[0]
+    if not (12 <= w <= 18 and 17 <= h <= 22 and 120 <= area <= 220):
+        return False
+    actual, expected = _normalise_digit(mask[y:y+h, x:x+w]), _zero_template()
+    if actual is None or expected is None:
+        return False
+    union = np.logical_or(actual > 0, expected > 0).sum()
+    return bool(union and np.logical_and(actual > 0, expected > 0).sum()/union >= .90)
+
+
 def read_points(reader, frame, box=MASTERY_POINTS):
     region = crop(frame, box)
     enlarged = cv2.resize(region, None, fx=4, fy=4, interpolation=cv2.INTER_CUBIC)
@@ -117,6 +162,10 @@ def read_points(reader, frame, box=MASTERY_POINTS):
         # excluding the currency icon and the separate Cost row entirely.
         readings.extend(value for value in _context_readings(reader, frame) if value is not None)
         counts = Counter(readings)
+    if not readings and _opencv_zero(frame, box):
+        # Zero is a valid balance and is re-read from a second fresh mastery
+        # frame by available_sp(). Never infer it from spending arithmetic.
+        return 0
     if len(counts) != 1 or next(iter(counts.values()), 0) < 2:
         raise RuntimeError(f'Could not reliably read the available skill-point total: numeric samples (4x/2x/mask/3x)={samples}')
     return readings[0]

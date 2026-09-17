@@ -2,6 +2,7 @@
 import json
 from pathlib import Path
 import time
+from math import ceil
 
 from .refill_policy import plan
 from .telemetry import duration
@@ -52,7 +53,14 @@ def decision_from_files(points, target, root, profile, *, reserve=0, check=lambd
     if type(disabled) is not bool:
         raise RuntimeError('Refill inputs unavailable: early_exit_validation.json has invalid disabled flag; no plan changed')
     check()
-    return decision(points, target, farms, profile, reserve=reserve, early_exit_disabled=disabled)
+    result = decision(points, target, farms, profile, reserve=reserve, early_exit_disabled=disabled)
+    # A nearly full batch can be processed now; launching a second small
+    # top-up adds search/load/exit overhead for only a few additional cars.
+    if (profile.share_code == '155439962'
+            and (points-reserve)//21 >= 42 and 0 < target-points <= 4*21):
+        result.update(mode='convert', planned_exit='convert_existing', planned_drive_seconds=0,
+                      reason='near_full_batch_avoid_small_topup_overhead')
+    return result
 
 
 def decision(points, target, farms, profile, *, reserve=0, early_exit_disabled=False):
@@ -63,6 +71,35 @@ def decision(points, target, farms, profile, *, reserve=0, early_exit_disabled=F
             raise RuntimeError('A full refill would exceed SP headroom and early-exit retention is unverified')
         result.update(mode='convert', planned_exit='convert_existing', planned_drive_seconds=0,
                       reason='early_exit_unverified_convert_funded_balance')
+    return result
+
+
+def force_exact_target(plan, points, target, profile):
+    """Turn a normal convert decision into a bounded terminal top-up.
+
+    Normal production should convert a nearly full balance.  At final credit
+    exhaustion there is nothing left to convert, so reaching the requested SP
+    reserve is the useful action.  The game cap makes overshoot harmless.
+    """
+    result = dict(plan)
+    if not (type(points) is int and type(target) is int and 0 <= points < target <= 999):
+        return result
+    if result.get('mode') != 'convert':
+        return result
+    rate = result.get('estimated_sp_per_second')
+    duration = getattr(profile, 'duration_seconds', 0)
+    if isinstance(rate, (int, float)) and rate > 0:
+        seconds = max(60, ceil((target-points+4)/rate))
+        seconds = min(duration, seconds) if duration else seconds
+        basis = 'terminal_exact_target_recent_rate'
+    else:
+        seconds = duration
+        basis = 'terminal_exact_target_full_run_fallback'
+    if not isinstance(seconds, (int, float)) or seconds <= 0:
+        raise RuntimeError('Terminal SP top-up has no safe challenge duration')
+    result.update(mode='topup', planned_exit='target_top_up', planned_drive_seconds=seconds,
+                  reason='terminal_exact_target', deadline_basis=basis,
+                  expected_top_up_yield_sp=(seconds*rate if isinstance(rate, (int,float)) and rate>0 else None))
     return result
 
 
