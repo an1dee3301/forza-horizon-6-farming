@@ -1,0 +1,2 @@
+﻿session_id,requested_spins,spin_type,dry_run,stop_on_unknown,started_at,completed_at,status,completed_spins,error
+20260919_023755_1d4d8f4f,500,SUPER,0,0,2026-09-18T17:37:55.511+00:00,2026-09-18T20:15:53.482+00:00,COMPLETE,500,

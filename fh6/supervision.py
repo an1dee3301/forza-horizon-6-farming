@@ -22,6 +22,10 @@ class RetryDelay:
         self.attempts += 1
         return min(15, 3 * 2 ** min(3, self.attempts-1))
 
+    def reset(self):
+        """Clear backoff after a verified recovery without forgetting progress."""
+        self.attempts = 0
+
 
 def validate_resume(goal, identifier):
     if not identifier:

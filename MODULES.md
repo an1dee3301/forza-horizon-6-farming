@@ -1,5 +1,12 @@
 # Wheelspin Workshop
 
+## Wheelspin Lab
+
+The new mode follows `LocalPanel → bridge.py → Controller → WheelspinLab` and
+shares WorkerLease, F7, focus, display, sync and lifecycle guards. The legacy
+`Mode_Spin.ahk` remains reference-only. SQLite enforces the record-first action
+invariant; Dry Run is enabled until reviewed game captures pass calibration.
+
 Open **Start FH6 Auto.cmd** or **FH6 Auto.pyw**. Both open the same dashboard.
 
 Choose **Earn saved Super Wheelspins**, enter how many **additional** Super Wheelspins

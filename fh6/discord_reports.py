@@ -16,6 +16,65 @@ STATE = RUNS/'discord_delivery.json'
 FARM_STATE = RUNS/'discord_farm_delivery.json'
 
 
+def wheelspin_snapshot(data):
+    """Attach current-session spin metrics without touching the game worker."""
+    try:
+        import sqlite3
+        from datetime import datetime, timezone
+        db = sqlite3.connect(RUNS/'wheelspin_lab.sqlite', timeout=.2)
+        db.row_factory = sqlite3.Row
+        session = db.execute('SELECT * FROM sessions ORDER BY started_at DESC LIMIT 1').fetchone()
+        if not session or session['completed_at']:
+            return data
+        sid = session['session_id']
+        totals = dict(db.execute("""SELECT COUNT(*) reward_slots,
+          SUM(reward_type='CAR') car_rewards,
+          SUM(reward_type='CREDITS') credit_rewards,
+          COALESCE(SUM(CASE WHEN reward_type='CREDITS' THEN credits_value ELSE 0 END),0) direct_cr,
+          SUM(COALESCE(duplicate,0)) duplicates,
+          SUM(decision='SELL' AND action_verified=1) sold,
+          SUM(decision='KEEP' AND action_verified=1) kept,
+          SUM(decision='SELL' AND action_verified=1 AND sell_value_if_known IS NOT NULL) priced_sales,
+          SUM(decision='SELL' AND action_verified=1 AND sell_value_if_known IS NULL) unpriced_sales,
+          SUM(decision='SELL' AND action_verified=1 AND protected=1) protected_sold_incidents,
+          COALESCE(SUM(CASE WHEN decision='SELL' AND action_verified=1 THEN sell_value_if_known ELSE 0 END),0) sale_cr,
+          SUM(decision IS NOT NULL AND action_verified=0) pending_actions
+          FROM rewards WHERE spin_id LIKE ?""", (sid+':%',)).fetchone())
+        durations = [float(row[0]) for row in db.execute(
+            "SELECT duration_seconds FROM spins WHERE session_id=? AND status='COMPLETE' AND duration_seconds BETWEEN 0.5 AND 60",
+            (sid,))]
+        recent_times = [datetime.fromisoformat(row[0]) for row in db.execute(
+            "SELECT completed_at FROM spins WHERE session_id=? AND status='COMPLETE' AND completed_at IS NOT NULL ORDER BY spin_number DESC LIMIT 20",
+            (sid,))]
+        kept_models = [dict(row) for row in db.execute("""SELECT
+            COALESCE(NULLIF(TRIM(display_name),''),'Unidentified protected car') name,
+            COUNT(*) count
+            FROM rewards WHERE spin_id LIKE ? AND decision='KEEP' AND action_verified=1
+            GROUP BY COALESCE(NULLIF(TRIM(display_name),''),'Unidentified protected car')
+            ORDER BY count DESC, name""", (sid+':%',))]
+        import statistics
+        started = datetime.fromisoformat(session['started_at'])
+        elapsed = max(.001, (datetime.now(timezone.utc)-started).total_seconds())
+        complete = int(session['completed_spins'])
+        rolling_rate = 0.0
+        if len(recent_times) >= 2:
+            span = abs((recent_times[0]-recent_times[-1]).total_seconds())
+            rolling_rate = (len(recent_times)-1)*60/max(.001, span)
+        lab = dict(session_id=sid, target=int(session['requested_spins']), completed=complete,
+            remaining=max(0, int(session['requested_spins'])-complete),
+            rate_per_minute=rolling_rate or complete*60/elapsed,
+            wall_rate_per_minute=complete*60/elapsed, elapsed_seconds=elapsed,
+            p50_seconds=statistics.median(durations) if durations else None,
+            p90_seconds=(sorted(durations)[max(0, int(.9*len(durations))-1)] if durations else None),
+            kept_models=kept_models,
+            **{key:int(value or 0) for key,value in totals.items()})
+        lab['auto_added'] = max(0, lab['car_rewards']-lab['duplicates'])
+        lab['total_cr'] = lab['direct_cr']+lab['sale_cr']
+        return dict(data, wheelspin_lab=lab)
+    except Exception:
+        return data
+
+
 def periodic_due(elapsed, interval):
     return elapsed >= max(60, min(3600, int(interval)))
 
@@ -53,10 +112,23 @@ def deliver(data, *, periodic=False):
                                 store_farm_frame)
     garage_image = None
     if periodic:
-        data = dict(data, report_kind='status')
+        data = dict(data, report_kind=('wheelspin_status' if data.get('wheelspin_lab') else 'status'))
         metadata = {}
         farm = data.get('farm_event')
-        if farm:
+        if data.get('wheelspin_lab'):
+            try:
+                import cv2
+                from .report_images import _capture_verified_window
+                frame = _capture_verified_window()
+                ok, encoded = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 82]) if frame is not None else (False, None)
+                if ok:
+                    garage_image = (encoded.tobytes(), now())
+                    metadata = dict(capture_policy='wheelspin_live_v1', verified_game=True,
+                                    screen='wheelspin_live', observed_at=garage_image[1],
+                                    source='Fresh verified Wheelspin Lab capture')
+            except Exception:
+                garage_image = None
+        elif farm:
             # This independent IDLE-priority process captures once per report.
             # It never sends input and cannot lengthen the farm route.
             frame = capture_active_challenge(data['goal_id'], farm)
@@ -153,7 +225,7 @@ def watch():
                     if periodic and not periodic_due(current_time-last_sent, interval):
                         time.sleep(2)
                         continue
-                    data = snapshot(game=game)
+                    data = wheelspin_snapshot(snapshot(game=game))
                     from .farm_notices import farm_due
                     new_farm = not periodic and farm_due(data, read_json(FARM_STATE))
                     if periodic or (current_time-last_sent >= 30 and (new_farm or report_due(previous, data, current_time-last_sent, interval))):
@@ -254,7 +326,7 @@ def main():
         secrets.configure(sys.stdin.read().strip())
         print('Discord webhook encrypted and reports enabled.')
     elif args.send:
-        print(json.dumps(deliver(snapshot(game=game_state(), note=args.note), periodic=True)))
+        print(json.dumps(deliver(wheelspin_snapshot(snapshot(game=game_state(), note=args.note)), periodic=True)))
     elif args.watch:
         watch()
     elif args.capture_game:

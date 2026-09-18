@@ -557,7 +557,7 @@ def payload(data):
             import math
             runs = math.ceil(max(0,999-farm['before_sp'])/analytics['sp_per_farm'])
             fields.insert(1, ('Refill estimate', f"About {runs} challenge runs / {runs*analytics.get('farm_seconds', 0)/60:.0f} minutes to 999 SP\nThen up to 47 Mad Mikes; estimate includes this run."))
-    periodic = data.get('report_kind') == 'status'
+    periodic = data.get('report_kind') in {'status', 'wheelspin_status'}
     body = {'username': 'FH6 Horizon Japan Control', 'allowed_mentions': {'parse': []},
         'embeds': [{'title': 'HORIZON JAPAN // LIVE STATUS' if periodic else ('HORIZON JAPAN // SP FARM STARTED' if data.get('report_kind') == 'farm_start' else 'HORIZON JAPAN // WHEELSPIN EARNED'), 'description': data['status'],
             'color': int((GREEN if data['active'] else AMBER)[1:], 16),
@@ -569,6 +569,66 @@ def payload(data):
         body['content'] = (f"## FH6 · {data.get('total_progress',data['earned']):,} / {data.get('total_target',data['target']):,} Super Wheelspins\n"
             f"**{'RUNNING' if data['active'] else 'STOPPED / RECOVERY'} · {data.get('stage') or data['phase']}**")
     return body
+
+
+def wheelspin_status_text(data):
+    lab = data['wheelspin_lab']
+    state = 'RUNNING' if data.get('active') else 'RECOVERY / WAITING'
+    p50 = f"{lab['p50_seconds']:.1f}s" if lab.get('p50_seconds') is not None else '—'
+    p90 = f"{lab['p90_seconds']:.1f}s" if lab.get('p90_seconds') is not None else '—'
+    kept = lab.get('kept_models') or []
+    kept_lines = '\n'.join(f"• **{row['name']}** × {row['count']}" for row in kept)
+    if not kept_lines:
+        kept_lines = '• No protected cars saved yet'
+    return (f"# FH6 // WHEELSPIN CONTROL\n"
+        f"**{lab['completed']:,} / {lab['target']:,} SUPER WHEELSPINS · {lab['remaining']:,} LEFT**\n"
+        f"**{state} · SPINNING / SELLING · NO SP FARM**\n\n"
+        f"**SPEED**  rolling {lab['rate_per_minute']:.2f}/min · wall {lab.get('wall_rate_per_minute',0):.2f}/min · P50 {p50} · P90 {p90}\n"
+        f"**REWARDS**  {lab['reward_slots']:,} slots · {lab['car_rewards']:,} cars · {lab['credit_rewards']:,} credit cards\n"
+        f"**CARS**  {lab['duplicates']:,} duplicates · {lab['sold']:,} sold · {lab['kept']:,} kept · {lab['auto_added']:,} first-time auto-added\n"
+        f"**PENDING**  {lab['pending_actions']:,} duplicate actions\n"
+        f"**CREDITS**  {lab['direct_cr']:,} rewards + {lab['sale_cr']:,} verified sales = **{lab['total_cr']:,} CR logged**\n"
+        f"**SALE VALUES**  {lab.get('priced_sales',0):,}/{lab['sold']:,} exact · {lab.get('unpriced_sales',0):,} unreadable · protected-sale incidents {lab.get('protected_sold_incidents',0):,}\n"
+        f"\n**CARS KEPT / SAVED — ACTUAL**\n{kept_lines}\n"
+        f"\n**GAME**  {data.get('game','unknown')} · Steam crash recovery unlimited · resumes Wheelspin menu\n"
+        f"-# Updated {data.get('timestamp')}")
+
+
+def render_wheelspin(data):
+    lab = data['wheelspin_lab']
+    canvas = Image.new('RGB', (1120, 800), '#071018')
+    draw = ImageDraw.Draw(canvas)
+    font_path = Path('C:/Windows/Fonts/bahnschrift.ttf')
+    def font(size):
+        return ImageFont.truetype(str(font_path), size) if font_path.exists() else ImageFont.load_default(size=size)
+    def put(x,y,text,size=24,color='#E7F2F2'):
+        draw.text((x,y),str(text),font=font(size),fill=color)
+    draw.rectangle((24,24,1096,776),fill='#0B1720',outline='#16D9B0',width=2)
+    draw.rectangle((24,24,1096,34),fill='#16D9B0')
+    put(52,55,'HORIZON JAPAN // WHEELSPIN CONTROL',30,'#16D9B0')
+    put(52,112,f"{lab['completed']:,} / {lab['target']:,}",58)
+    put(560,132,f"{lab['remaining']:,} LEFT",30,'#F2C14E')
+    width=int(1016*(lab['completed']/max(1,lab['target'])))
+    draw.rectangle((52,190,1068,212),fill='#233442'); draw.rectangle((52,190,52+width,212),fill='#16D9B0')
+    rows=[('ROLLING RATE',f"{lab['rate_per_minute']:.2f} spins/min"),
+          ('CARS',f"{lab['car_rewards']:,} won · {lab['sold']:,} sold · {lab['kept']:,} kept"),
+          ('FIRST-TIME',f"{lab['auto_added']:,} automatically added by Forza"),
+          ('DUPLICATES',f"{lab['duplicates']:,} seen · {lab['pending_actions']:,} pending"),
+          ('CREDIT REWARDS',f"{lab['direct_cr']:,} CR"),
+          ('VERIFIED CAR SALES',f"{lab['sale_cr']:,} CR · {lab.get('priced_sales',0)}/{lab['sold']} exact"),
+          ('TOTAL CREDIT',f"{lab['total_cr']:,} CR logged · {lab.get('unpriced_sales',0)} sale values unknown"),
+          ('STATE',f"{'RUNNING' if data.get('active') else 'RECOVERY'} · {data.get('stage') or 'wheelspin_open'}")]
+    for i,(name,value) in enumerate(rows):
+        col=i%2; row=i//2; x=52+col*510; y=248+row*78
+        put(x,y,name,17,'#8096A8'); put(x,y+25,value,25,'#E7F2F2')
+    put(52,574,'CARS KEPT / SAVED — ACTUAL',18,'#F2C14E')
+    kept=lab.get('kept_models') or []
+    summary=' · '.join(f"{row['name']} ×{row['count']}" for row in kept) or 'None yet'
+    import textwrap
+    for index,line in enumerate(textwrap.wrap(summary,width=92)[:4]):
+        put(52,604+index*27,line,18,'#E7F2F2')
+    put(52,725,'SPINNING / SELLING · NO SP FARM · '+data.get('timestamp',''),15,'#8096A8')
+    output=io.BytesIO(); canvas.save(output,format='PNG'); return output.getvalue()
 
 
 def render(data):
@@ -662,8 +722,24 @@ def send(url, data, *, opener=None, game_image=None):
     boundary = 'fh6-'+uuid.uuid4().hex
     message_payload = payload(data)
     from .farm_notices import discord_time
-    periodic = data.get('report_kind') == 'status'
-    if periodic:
+    periodic = data.get('report_kind') in {'status', 'wheelspin_status'}
+    if periodic and data.get('wheelspin_lab'):
+        files = []
+        gallery = []
+        if game_image:
+            files.append(('game.jpg', game_image[0], 'image/jpeg'))
+            gallery.append({'media':{'url':'attachment://game.jpg'},
+                            'description':'Latest verified game capture · '+discord_time(game_image[1],'F')})
+        files.append(('wheelspin_control.png', render_wheelspin(data), 'image/png'))
+        gallery.append({'media':{'url':'attachment://wheelspin_control.png'},
+                        'description':'Live Wheelspin Lab totals and decisions'})
+        message_payload = {'username':'FH6 Horizon Japan Control',
+            'allowed_mentions':{'parse':[]}, 'flags':1 << 15,
+            'attachments':[{'id':i,'filename':name} for i,(name,blob,mime) in enumerate(files)],
+            'components':[{'type':17,'accent_color':int(GREEN[1:],16),'components':[
+                {'type':10,'content':wheelspin_status_text(data)},
+                {'type':12,'items':gallery}]}]}
+    elif periodic:
         from .report_boards import render_boards, summary_lines, account_summary
         boards = render_boards(data, game_image)
         first = message_payload['embeds'][0]

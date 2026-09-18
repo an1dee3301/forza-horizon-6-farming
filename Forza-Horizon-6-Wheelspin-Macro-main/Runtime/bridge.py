@@ -28,15 +28,17 @@ from fh6.profiles import load_profile, save_profile, ChallengeProfile
 from fh6.ownership import WorkerLease
 from fh6.supervision import validate_resume
 from dataclasses import replace
+from fh6.wheelspin import MODE as WHEELSPIN_MODE
 
 STAGE_NAMES = dict(STAGES, complete='Complete', inspect_sp='Read actual SP balance', farm='Run Mega V6',
                   farm_prepare='Select the 22B and verify settings', farm_search='Find challenge 155439962',
                   farm_launch='Start the verified challenge', farm_drive='Farm SP — Mega V6',
                   farm_leave='Exit the completed challenge', farm_read_sp='Verify SP earned',
                   farm_return='Return home → Car Collection', game_start='Open game through Steam',
-                  game_restart='Restart crashed game', cloud_sync='Waiting for full cloud sync — all actions paused')
+                  game_restart='Restart crashed game', cloud_sync='Waiting for full cloud sync — all actions paused',
+                  wheelspin_open='Wheelspin Lab — record rewards')
 MODES = (GOAL_MODE, 'Full pipeline', 'Buy only', 'Mastery only', 'Recognition only',
-         'Farm SP only', 'Return to collection', 'Check farm setup', 'Open game')
+         'Farm SP only', 'Return to collection', 'Check farm setup', WHEELSPIN_MODE, 'Open game')
 
 
 def configuration(args, saved, goal=None):
@@ -63,6 +65,16 @@ def configuration(args, saved, goal=None):
             if target != goal['limit'] or reserve != goal.get('reserve_sp', 0):
                 raise ValueError('Resume with the saved wheelspin target and SP reserve')
         result = dict(mode=GOAL_MODE, limit=target, reserve_sp=reserve)
+    elif args.mode == WHEELSPIN_MODE:
+        if goal and goal.get('phase') != 'complete':
+            raise ValueError('Finish or end the saved farming mission before opening saved Wheelspins')
+        if saved and saved.get('phase') != 'complete':
+            raise ValueError('Finish the saved Mad Mike before starting Wheelspin Lab')
+        target = whole_number(args.target, 'Wheelspin quantity')
+        if not 1 <= target <= 10000:
+            raise ValueError('Use a Wheelspin quantity of 1–10,000')
+        result = dict(mode=WHEELSPIN_MODE, limit=target, spin_type=args.spin_type,
+                      dry_run=bool(args.dry_run), stop_on_unknown=bool(args.stop_on_unknown))
     elif goal and goal.get('phase') != 'complete' and args.mode != 'Recognition only':
         raise ValueError('Resume or end the saved wheelspin target before running another module')
     elif saved and saved.get('phase') != 'complete':
@@ -106,7 +118,13 @@ class Status:
 
     def event(self, kind, value):
         with self.lock:
-            if kind == 'progress':
+            if kind == 'config':
+                # Show the requested worker immediately, even while lifecycle
+                # or cloud-sync gates run before the mode creates its session.
+                self.session = dict(value, completed=0, rewards=0, bought=0,
+                                    active_seconds=0, phase='starting', farm_runs=0)
+                self.observed = time.monotonic()
+            elif kind == 'progress':
                 self.session = dict(value)
                 self.observed = time.monotonic()
                 self.data['goal_pending'] = int(value.get('mode') == GOAL_MODE and value.get('phase') != 'complete')
@@ -132,6 +150,39 @@ class Status:
                 elapsed += time.monotonic() - self.observed
             values = summary(self.session, elapsed)
             points = values['points']
+            self.data['run_mode'] = self.session.get('mode', '')
+            if self.session.get('mode') == WHEELSPIN_MODE and time.monotonic()-self.analytics_checked >= 1:
+                self.analytics_checked = time.monotonic()
+                try:
+                    from fh6.wheelspin_history import WheelspinStore
+                    from fh6.wheelspin_stats import dashboard_data
+                    lab = dashboard_data(WheelspinStore(WORKSPACE/'runs/wheelspin_lab.sqlite'))
+                    totals, exclusives = lab['totals'], lab['exclusives']
+                    self.data.update(
+                        lab_super_spins=totals['super_spins'], lab_regular_spins=totals['regular_spins'],
+                        lab_reward_slots=totals['reward_slots'], lab_car_rewards=totals['car_rewards'],
+                        lab_duplicates=totals['duplicate_cars'], lab_exclusive_pulls=totals['protected_exclusive_pulls'],
+                        lab_sold=totals['cars_sold'], lab_retained=totals['cars_retained'], lab_sell_cr=totals['sell_cr'],
+                        analytics_header=(f"WHEELSPIN LAB  •  {totals['super_spins']:,} SWP  •  "
+                            f"{totals['reward_slots']:,} slots  •  {totals['car_rewards']:,} cars\n"
+                            "Observed empirical rates; garage ownership is never counted as a pull."),
+                        analytics_basis="Wheelspin Lab SQLite; every row is committed before duplicate processing.",
+                        analytics_overview="~".join([
+                            f"Super spins^{totals['super_spins']:,}^Recorded complete",
+                            f"Reward slots^{totals['reward_slots']:,}^All reward types",
+                            f"Car rewards^{totals['car_rewards']:,}^Observed cards",
+                            f"Protected pulls^{totals['protected_exclusive_pulls']:,}^All 45 retained",
+                            f"Cars sold^{totals['cars_sold']:,}^Verified actions",
+                            f"Sell CR^{totals['sell_cr']:,}^Known verified offers",
+                        ]),
+                        analytics_wheelspin="~".join(
+                            f"{row['car']}^{row['count']}^{row['first_seen'] or '—'}^{row['last_seen'] or '—'}^"
+                            f"{row['pulls_per_100_super_spins']:.3f}" if row['pulls_per_100_super_spins'] is not None else
+                            f"{row['car']}^{row['count']}^{row['first_seen'] or '—'}^{row['last_seen'] or '—'}^—"
+                            for row in exclusives),
+                    )
+                except Exception:
+                    self.data['analytics_header'] = 'Wheelspin Lab measurements temporarily unavailable.'
             if self.session.get('mode') == GOAL_MODE and time.monotonic()-self.analytics_checked >= 5:
                 self.analytics_checked = time.monotonic()
                 try:
@@ -237,6 +288,16 @@ def inspect_session(status, session):
         if data.get('phase') == 'complete':
             points = '' if data.get('end_reason') == 'ended' else max(0, points - data.get('rewards', 0)*21)
     visible = goal if goal_pending else data
+    lab = None
+    try:
+        from fh6.wheelspin_history import WheelspinStore
+        lab = WheelspinStore(WORKSPACE/'runs/wheelspin_lab.sqlite').latest_session()
+    except Exception:
+        pass
+    if lab and lab.get('status') == 'RUNNING' and not goal_pending and not (data and data.get('phase') != 'complete'):
+        visible = dict(id=lab['session_id'], mode=WHEELSPIN_MODE, phase='running',
+                       completed=lab['completed_spins'], rewards=lab['completed_spins'], bought=0,
+                       limit=lab['requested_spins'], active_seconds=0, farm_runs=0)
     status.event('progress', visible)
     status.event('stage', visible.get('phase', 'inspect_sp'))
     status.write(input_sp=points, reserve=data.get('reserve_sp', settings.get('reserve_sp', 0)),
@@ -250,7 +311,7 @@ def inspect_session(status, session):
                  'An unfinished car is saved. The target mode will finish it first.' if data and data.get('phase') != 'complete'
                  else 'Enter how many Super Wheelspins to earn, then Start or F6.',
                  error_image='', busy=0, ok=1, history=history_text(session),
-                 saved_mode=GOAL_MODE)
+                 saved_mode=WHEELSPIN_MODE if lab and lab.get('status') == 'RUNNING' else GOAL_MODE)
     if (WORKSPACE/'runs/cloud_sync.json').exists():
         status.write(stage='Waiting for full cloud sync',
                      message='Cloud sync needs verification. Use Recovery only after confirming it fully completed.')
@@ -277,6 +338,9 @@ def main(argv=None):
     parser.add_argument('--share-code', default='155439962')
     parser.add_argument('--challenge-seconds', type=int, default=900)
     parser.add_argument('--reserve', default='0')
+    parser.add_argument('--spin-type', choices=('SUPER', 'REGULAR'), default='SUPER')
+    parser.add_argument('--dry-run', type=int, choices=(0, 1), default=1)
+    parser.add_argument('--stop-on-unknown', type=int, choices=(0, 1), default=1)
     parser.add_argument('--monitor', type=int, default=1)
     parser.add_argument('--timeout', type=float, default=30)
     parser.add_argument('--steam-backup', type=int, choices=(0, 1), default=1)
@@ -319,12 +383,13 @@ def main(argv=None):
         config = configuration(args, session.data, GoalSession(WORKSPACE/'runs/goal.json').data)
         set_dpi_awareness()
         controller = Controller(status.event)
-        import keyboard
         def stop_mission():
             with status.lock:
                 status.data['cancelled'] = 1
             controller.stop()
-        hotkey = keyboard.add_hotkey('f7', stop_mission)
+        # The AHK panel owns the global F7 hotkey and writes the channel stop
+        # file. A second low-level Python hook produced phantom F7 events while
+        # Forza was rapidly accepting Enter, terminating healthy spin chains.
         if (args.channel/'stop').exists() or not owner_alive(args.owner):
             raise RuntimeError('Start cancelled.')
         launch_path = WORKSPACE/'runs/launch_settings.json'

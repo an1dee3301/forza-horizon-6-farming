@@ -160,8 +160,20 @@ def menu_name(doc, result):
         return 'challenge_browser'
     if has('EventLab', (380,215,400,65)) and has('Play Event') and has('Challenges', contains=True):
         return 'eventlab'
+    if (has('Car Already Owned', contains=True) and
+            has('Add to Garage', contains=True) and has('Send as a Gift', contains=True) and
+            (has('Sell', contains=True) or has('Sell Duplicate', contains=True) or
+             has('Sell Car', contains=True) or has('Sell for', contains=True))):
+        return 'wheelspin_duplicate'
+    if (has('Collect', contains=True) and
+            (has('Spin Again', contains=True) or has('Collect Prize', contains=True)) and
+            not has('Add to Garage', contains=True)):
+        return 'wheelspin_reward'
     if has('MY HORIZON', (240,200,1440,50)) and has('CREATIVE HUB', (240,200,1440,50)):
         return 'pause_menu'
+    if ((has('Super Wheelspin', contains=True) or has('Wheelspin', contains=True)) and
+            has('Spin', (65,950,500,120), contains=True)):
+        return 'wheelspin_menu'
     if has('Settings', (70,150,400,65)) and has('Difficulty', LEFT) and has('HUD & Gameplay', LEFT):
         return 'settings'
     if has('Car Mastery', (65, 80, 1000, 120)) and has('Available Points', contains=True):

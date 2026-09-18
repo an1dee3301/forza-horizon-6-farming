@@ -278,6 +278,12 @@ class Controller:
                                 self.emit('status', 'Recognition stopped')
                             elif config['mode'] == 'Open game':
                                 self.emit('status', 'Game is open — saved run has not been started')
+                            elif config['mode'] == 'Wheelspin Lab':
+                                from .wheelspin import WheelspinLab
+                                self.emit('activity', True)
+                                WheelspinLab(nav, self.running, self.emit).run(
+                                    config['limit'], config.get('spin_type', 'SUPER'),
+                                    config.get('dry_run', True), config.get('stop_on_unknown', True))
                             elif config['mode'] == GOAL_MODE:
                                 session = GoalSession(core.BASE/'runs'/'goal.json')
                                 validate_resume(session.data, config.get('resume_goal_id'))
@@ -358,10 +364,12 @@ class Controller:
                             if str(exc).startswith('Game focus lost') and lifecycle.restore_focus():
                                 self.emit('log', 'Game priority restored focus; resuming the saved stage')
                                 continue
-                            if isinstance(exc, RuntimeError) and not isinstance(exc, core.MasteryStopped) and config['mode'] == GOAL_MODE:
+                            if (isinstance(exc, RuntimeError) and
+                                    not isinstance(exc, core.MasteryStopped) and
+                                    config['mode'] in {GOAL_MODE, 'Wheelspin Lab'}):
                                 seconds = self.retry_delay.next()
                                 self.emit('status', f'Retrying saved step in {seconds}s (attempt {self.retry_delay.attempts}): {exc}. F7 stops.')
-                                self.emit('log', 'Retry keeps the checkpoint and purchase ledger; it never clears an uncertain transaction.')
+                                self.emit('log', 'Retry keeps the durable checkpoint; it never repeats a committed reward or clears an uncertain transaction.')
                                 lifecycle.pause(seconds)
                                 continue
                             raise

@@ -486,12 +486,15 @@ class GameLifecycle:
     def wait_sync(self, nav):
         """Wait indefinitely without activation, keys, clicks, launch or kill.
 
-        Disappearance alone is insufficient: require three stable observations
-        of a playable menu. Unknown/loading/login/offline dialogs remain blocked.
+        The stable native Start Game screen is the sole exception: selecting it
+        initiates Xbox/cloud synchronization and cannot choose a cloud, offline,
+        conflict or account-dialog option.  After that one input, disappearance
+        alone is insufficient: require three stable observations of a playable
+        menu. Unknown/loading/login/offline dialogs remain blocked.
         """
         guard = self.sync_guard
         guard.block('Waiting for synchronization and playable game')
-        stable, last = 0, None
+        stable, last, start_sent, wake_sent, unknown_stable = 0, None, False, False, 0
         while True:
             self.check()
             if guard.observe_wait_identity(self.game.identity()):
@@ -511,6 +514,54 @@ class GameLifecycle:
                 continue
             obs = nav.observe_sync()
             guard.observe_completion(obs.doc)
+            native = startup_screen(obs.doc)
+            if native == 'start' and not start_sent:
+                stable = stable+1 if last == 'start' else 1
+                last = 'start'
+                if stable >= 2:
+                    # Deliberately bypass the general sync input guard for this
+                    # one exact lifecycle action. Display, focus, F7 and the
+                    # two-frame native-label proof still apply.
+                    if self.display_guard:
+                        self.display_guard.check()
+                    if nav.title.casefold() not in core.foreground_title().casefold():
+                        stable, last = 0, None
+                        self.pause(.5)
+                        continue
+                    import pyautogui
+                    nav.invalidate_ready()
+                    nav.probe('input', 'enter')
+                    pyautogui.keyDown('enter')
+                    try:
+                        self.pause(.06)
+                    finally:
+                        pyautogui.keyUp('enter')
+                    start_sent = True
+                    stable, last = 0, None
+                    self.emit('log', 'Sync gate selected verified Start Game once to initiate synchronization.')
+                    self.pause(.5)
+                continue
+            unknown_stable = unknown_stable+1 if start_sent and obs.screen == 'unknown' else 0
+            if unknown_stable >= 6 and not wake_sent and not guard.visible() and not sync_state(obs.doc):
+                # FH6 can finish loading into its idle garage camera with the
+                # Home tiles hidden. Shift only wakes that camera; it cannot
+                # choose a tile or answer a sync/account dialog.
+                if self.display_guard:
+                    self.display_guard.check()
+                if nav.title.casefold() in core.foreground_title().casefold():
+                    import pyautogui
+                    nav.invalidate_ready()
+                    nav.probe('input', 'shift')
+                    pyautogui.keyDown('shift')
+                    try:
+                        self.pause(.06)
+                    finally:
+                        pyautogui.keyUp('shift')
+                    wake_sent = True
+                    stable, last = 0, None
+                    self.emit('log', 'Sync gate woke the verified idle garage camera once; no menu item selected.')
+                    self.pause(.5)
+                    continue
             from .farming import timer_visible, result_visible
             good = not sync_state(obs.doc) and (startup_screen(obs.doc) == 'continue' or
                 nav.is_home(obs) or nav.is_roam(obs) or timer_visible(obs.doc) or result_visible(obs.doc) or

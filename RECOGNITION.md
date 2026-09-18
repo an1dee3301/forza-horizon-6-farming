@@ -1,5 +1,13 @@
 # Legacy command-line recognition and tests
 
+## Wheelspin Lab
+
+Three matching resolved observations are required. The full 1920×1080 frame and
+all slot crops are saved before the reward transaction commits. Duplicate
+decisions require exact year, manufacturer and model. Partial OCR stops without
+Sell or Add-to-Garage input; the first 500-spin session is the live calibration
+source.
+
 The new desktop dashboard and full modular pipeline are documented in **README.md**.
 Open **Start FH6 Auto.cmd** for the GUI. The commands below remain available for
 individual checks; the old "next stage" section is historical.
