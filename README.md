@@ -78,6 +78,7 @@ Add a webhook in the dashboard to receive the live mission board and current gam
 | [`RECOGNITION.md`](RECOGNITION.md) | Recognition and calibration notes |
 | [`CHART-METHODS.md`](CHART-METHODS.md) | Chart and metric conventions |
 | [`SECURITY.md`](SECURITY.md) | Private-state and credential handling |
+| [`docs/DEVELOPMENT-HISTORY.md`](docs/DEVELOPMENT-HISTORY.md) | Color-coded, dated code-change history |
 
 Private gameplay captures, `runs/`, `failures/`, `purchases/`, `LocalState/`, virtual environments, process identifiers, and Discord credentials stay outside Git.
 
