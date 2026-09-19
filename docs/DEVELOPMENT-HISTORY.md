@@ -1,8 +1,33 @@
 # Development history
 
-This timeline follows the repository's committed code history. Times are **Japan Standard Time (UTC+09:00)**. Git tracking begins on **September 14, 2026**; earlier local prototypes and gameplay experiments are not dated here because their individual changes cannot be reconstructed from this repository.
+Times are **Japan Standard Time (UTC+09:00)**. Git tracking begins on **September 14, 2026**. The preceding section reconstructs earlier local work from dated recording notes, file creation times, mission notes, and run logs. Those dates identify evidence of work, **not individual commits or exact deployment times**. The upstream macro's older changelog describes upstream development and is not presented as this project's own history.
+
+## Current performance aims
+
+| Aim | Measurement | Status |
+|---|---|---|
+| **40 seconds per car** | Rolling median of complete buy → mastery → return cycles; keep slow cycles and recovery in the recorded distribution. | Target, not yet established as sustained performance. |
+| **1,400 retained SP/hour** | Actual SP kept, divided by complete farm time including challenge setup, loading, top-ups, and farm recovery; cap loss does not count as retained SP. | Target, not yet established as sustained performance. |
+
+The [three-phase comparison](../README.md#2-three-phase-highlights) reports measured historical results; those values must not be relabeled as either target being met.
 
 **Colors:** 🟩 farm and speed · 🟥 safety and recovery · 🟪 Wheelspin Lab · 🟦 measurements and reports · 🟨 release and documentation. A change can have more than one color.
+
+## Before Git tracking · reconstructed local work
+
+| When (JST) | Type | Evidence-backed development | Local evidence |
+|---|---|---|---|
+| Sep 7 | 🟦🟥 | Reviewed the 98-second, 1920×1080 English-UI manual cycle. Identified the 95,000-CR purchase, newest-car route, six-node 21-SP mastery path, and duplicate-removal ambiguity. | `video_review/observations.md`; recording named `Recording 2026-09-07 231512.mp4` |
+| Sep 8 | 🟨🟥 | Created the first local Python package with separate purchase, mastery, session, pipeline, controller, and GUI modules. Began logged live attempts that afternoon. | Local file creation dates; earliest retained run log `20260908_152247_524917.log` |
+| Sep 9 | 🟩🟥 | Added production/goal planning, farm profiles, single-worker ownership, game lifecycle, supervision and cloud-sync gating. Integrated the local Python worker with the imported AHK panel, keeping the upstream project distinct. | Local module creation dates; `Forza-Horizon-6-Wheelspin-Macro-main/LOCAL-EDITION.md` |
+| Sep 10 | 🟥🟩🟦 | Added durable mission reset/checkpoint work. Started a fresh 500-reward mission; measured one complete car cycle at 54.683s after a prior 20-cycle mean of about 85.7s. One cycle was not a sustained median. | `runs/FRESH-500-STATUS.md`; `runs/SPEED-REPORT.md`; [research plan](../IMPROVEMENT-PLAN-2026-09-10.md) |
+| Sep 11 | 🟦🟥 | Started a fresh 1,000-reward mission with in-app analytics and user-triggered exports. Tested Steam crash restart, saved-goal resume, Subaru selection and share-code entry. | `runs/FRESH-1000-STATUS.md`; mission ID `20260911_014620_313216` |
+| Sep 12 | 🟩🟦🟥 | Instrumented cycle stages, transition latency, farm economics and Discord boards. Tested early-exit Mega top-ups and a Mini V2 trial; the 200-reward Mini trial was reverted after lower retained SP/hour. Applied a conversion pipeline optimizer at a clean checkpoint and measured its later results rather than assuming a speed gain. | `docs/OPERATIONS_METRICS.md`; `docs/SUB30_SPEED_PLAN.md`; `docs/UI_RECOGNITION_RESEARCH.md` |
+| Sep 13 | 🟩🟥🟦 | Continued local farm, home-route, OCR and recovery candidates, including SP read/recovery and return navigation. These candidate files establish experimentation; they do not prove every candidate was deployed. | Dated `runs/optimizer_candidates/` directories and `tests/` files |
+
+The local `runs/`, video-review captures and private checkpoints are excluded from Git. Their evidence names are given for provenance; only the linked public docs and later commits are available from GitHub.
+
+## Committed history
 
 | When (JST) | Type | What changed | Commit |
 |---|---|---|---|
