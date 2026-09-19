@@ -49,7 +49,7 @@ class WheelspinStore:
           classification_confidence REAL NOT NULL, rarity TEXT, card_color TEXT,
           credits_value INTEGER,
           year INTEGER, manufacturer TEXT, model TEXT, display_name TEXT, pi_class TEXT, pi INTEGER,
-          forza_edition INTEGER, wheelspin_exclusive INTEGER, protected INTEGER, duplicate INTEGER,
+          forza_edition INTEGER, wheelspin_exclusive INTEGER, protected INTEGER, retain INTEGER, duplicate INTEGER,
           decision TEXT, decision_confidence REAL, action_attempted TEXT, action_verified INTEGER NOT NULL DEFAULT 0,
           sell_value_if_known INTEGER, full_screen_path TEXT NOT NULL, slot_crop_path TEXT NOT NULL,
           duplicate_dialog_path TEXT, association_confidence REAL,
@@ -63,6 +63,21 @@ class WheelspinStore:
         columns = {row[1] for row in self.db.execute("PRAGMA table_info(rewards)")}
         if "credits_value" not in columns:
             self.db.execute("ALTER TABLE rewards ADD COLUMN credits_value INTEGER")
+        if "retain" not in columns:
+            self.db.execute("ALTER TABLE rewards ADD COLUMN retain INTEGER")
+            # Legacy runs conflated catalog membership with keep policy. The
+            # reward text is immutable, so reconstruct the two classifications
+            # independently without changing recorded Sell/Keep actions.
+            from .wheelspin_catalog import identify_exclusive, retain_match
+            for row in self.db.execute("""SELECT reward_id,raw_ocr,display_name,
+                    manufacturer,model FROM rewards WHERE reward_type='CAR'""").fetchall():
+                evidence = " ".join(str(row[key] or "") for key in
+                                    ("raw_ocr", "display_name", "manufacturer", "model"))
+                retain = int(retain_match(evidence))
+                exclusive = 1 if identify_exclusive(row["raw_ocr"]) else None
+                self.db.execute("""UPDATE rewards SET retain=?,protected=?,
+                    wheelspin_exclusive=? WHERE reward_id=?""",
+                    (retain, retain, exclusive, row["reward_id"]))
 
     @contextmanager
     def transaction(self):
@@ -138,41 +153,49 @@ class WheelspinStore:
         with self.transaction():
             self.db.execute("""UPDATE rewards SET reward_type='CAR',credits_value=NULL,
                 duplicate=1,year=?,manufacturer=?,model=?,display_name=?,
-                protected=?,wheelspin_exclusive=?,decision_confidence=?,association_confidence=?,duplicate_dialog_path=?
+                protected=?,retain=?,decision_confidence=?,association_confidence=?,duplicate_dialog_path=?
                 WHERE spin_id=? AND reward_id=?""",
                 (identity.get("year"), identity.get("manufacturer"), identity.get("model"),
-                 identity.get("display_name"), identity.get("protected"), identity.get("wheelspin_exclusive"),
+                 identity.get("display_name"), identity.get("retain"), identity.get("retain"),
                  confidence, confidence, path, spin_id, reward_id))
             self.event("CAR_IDENTIFIED", spin_id, reward_id, confidence=confidence,
                        year=identity.get("year"), manufacturer=identity.get("manufacturer"),
                        model=identity.get("model"), protected=identity.get("protected"))
 
-    def assert_action_allowed(self, spin_id, reward_id, action):
+    def assert_action_allowed(self, spin_id, reward_id, action, live_dialog_text=None):
         spin = self.spin(spin_id)
         row = self.db.execute("SELECT * FROM rewards WHERE spin_id=? AND reward_id=?", (spin_id, reward_id)).fetchone()
         if spin["rewards_committed"] != 1 or row is None:
             raise AssertionError("reward screen and slots must be durably committed")
         if action == "SELL":
-            if row["protected"] != 0:
+            if row["retain"] != 0:
                 raise AssertionError("protected or unknown car may not be sold")
             # Independent destructive-action interlock. Recheck immutable
             # card OCR and native-dialog identity so a matcher regression
             # cannot sell a user-protected car.
-            from .wheelspin_catalog import user_keep_match, lamborghini_candidate
+            from .wheelspin_catalog import (retain_match,
+                                            non_lamborghini_make_confirmed,
+                                            model_identity_overlap,
+                                            normalize_car_text)
             identity_text = " ".join(str(row[key] or "") for key in
                                      ("raw_ocr", "display_name", "manufacturer", "model"))
-            if user_keep_match(identity_text):
+            if retain_match(identity_text):
                 raise AssertionError("protected keep-list alias may not be sold")
-            if lamborghini_candidate(identity_text):
-                raise AssertionError("Lamborghini may not be sold while gold-card color is uncertain")
+            if not live_dialog_text or retain_match(live_dialog_text):
+                raise AssertionError("current duplicate dialog is protected or unreadable")
+            if normalize_car_text(live_dialog_text) != normalize_car_text(row["display_name"]):
+                raise AssertionError("current duplicate dialog changed before Sell")
+            if not (non_lamborghini_make_confirmed(row["raw_ocr"]) or
+                    non_lamborghini_make_confirmed(live_dialog_text)):
+                raise AssertionError("non-Lamborghini manufacturer is not confirmed")
+            if not model_identity_overlap(row["raw_ocr"], live_dialog_text):
+                raise AssertionError("reward card and dialog lack shared model evidence")
             other_cards = self.db.execute(
-                "SELECT raw_ocr,protected FROM rewards WHERE spin_id=? AND reward_id<>? "
+                "SELECT raw_ocr,retain FROM rewards WHERE spin_id=? AND reward_id<>? "
                 "AND action_verified=0 AND reward_type NOT IN "
                 "('CREDITS','CLOTHING','HORN','EMOTE','COSMETIC')",
                 (spin_id, reward_id)).fetchall()
-            if any(card["protected"] == 1 or
-                   user_keep_match(card["raw_ocr"]) or
-                   lamborghini_candidate(card["raw_ocr"])
+            if any(card["retain"] == 1 or retain_match(card["raw_ocr"])
                    for card in other_cards):
                 raise AssertionError("unresolved protected card in this spin blocks Sell")
         if row["decision"] != action:
@@ -190,8 +213,8 @@ class WheelspinStore:
         else:
             raise AssertionError("only SELL or KEEP is an input action")
 
-    def action_attempted(self, spin_id, reward_id, action):
-        self.assert_action_allowed(spin_id, reward_id, action)
+    def action_attempted(self, spin_id, reward_id, action, live_dialog_text=None):
+        self.assert_action_allowed(spin_id, reward_id, action, live_dialog_text)
         with self.transaction():
             self.db.execute("UPDATE rewards SET action_attempted=? WHERE reward_id=?", (action, reward_id))
             self.event("ACTION_SENT", spin_id, reward_id, action=action)
@@ -276,9 +299,11 @@ class WheelspinStore:
         row = self.db.execute("""SELECT COUNT(DISTINCT CASE WHEN s.spin_type='SUPER' AND s.status='COMPLETE' THEN s.spin_id END) super_spins,
           COUNT(DISTINCT CASE WHEN s.spin_type='REGULAR' AND s.status='COMPLETE' THEN s.spin_id END) regular_spins,
           COUNT(r.reward_id) reward_slots, SUM(r.reward_type='CAR') car_rewards,
-          SUM(COALESCE(r.duplicate,0)) duplicate_cars, SUM(COALESCE(r.protected,0)) protected_exclusive_pulls,
-          SUM(r.protected=1 AND r.decision='SELL' AND r.action_verified=1) protected_sold,
-          SUM(r.protected=1 AND r.decision='KEEP' AND r.action_verified=1) protected_retained,
+          SUM(COALESCE(r.duplicate,0)) duplicate_cars,
+          SUM(COALESCE(r.wheelspin_exclusive,0)) exclusive_pulls,
+          SUM(COALESCE(r.retain,r.protected,0)) policy_keep_pulls,
+          SUM(COALESCE(r.retain,r.protected,0)=1 AND r.decision='SELL' AND r.action_verified=1) protected_sold,
+          SUM(COALESCE(r.retain,r.protected,0)=1 AND r.decision='KEEP' AND r.action_verified=1) protected_retained,
           SUM(r.decision='SELL' AND r.action_verified=1) cars_sold,
           SUM(r.decision='KEEP' AND r.action_verified=1) cars_retained,
           SUM(CASE WHEN r.decision='SELL' AND r.action_verified=1 THEN COALESCE(r.sell_value_if_known,0) ELSE 0 END) sell_cr

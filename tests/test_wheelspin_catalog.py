@@ -1,10 +1,10 @@
 from fh6.wheelspin_catalog import PROTECTED_CARS, PRIORITY_TARGETS, identify_protected
 
 
-def test_catalog_contains_exactly_45_unique_protected_cars():
+def test_catalog_contains_exactly_45_exclusive_cars_without_retention_policy():
     assert len(PROTECTED_CARS) == 45
     assert len({car.identity for car in PROTECTED_CARS}) == 45
-    assert all(car.protected and car.official_route == "Wheelspin, Seasonal" for car in PROTECTED_CARS)
+    assert all(car.wheelspin_exclusive and car.official_route == "Wheelspin, Seasonal" for car in PROTECTED_CARS)
 
 
 def test_priority_targets_are_part_of_the_full_catalog():
@@ -40,4 +40,3 @@ def test_partial_or_ambiguous_text_fails_closed():
     assert identify_protected("SESTO ELEMENTO") is None
     assert identify_protected("2011 LAMBORGHINI") is None
     assert identify_protected("911 GT2") is None
-

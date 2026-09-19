@@ -11,7 +11,7 @@ import cv2
 import numpy as np
 
 from .ocr import normalize
-from .wheelspin_catalog import identify_protected, normalize_car_text
+from .wheelspin_catalog import identify_exclusive, normalize_car_text, retain_match
 
 
 # Only the three selected centre cards.  The old regions covered each complete
@@ -39,20 +39,21 @@ def classify_reward_text(raw_text):
     base = dict(raw_ocr=raw, normalized_text=normalize(raw), reward_type="UNKNOWN",
                 classification_confidence=0.0, year=None, manufacturer=None, model=None,
                 display_name=None, forza_edition=None, wheelspin_exclusive=None,
-                protected=None)
+                protected=None, retain=None)
     if not normalized:
         return base
     credits = _credit_value(raw)
     if credits is not None:
         return dict(base, reward_type="CREDITS", classification_confidence=1.0,
                     credits_value=credits)
-    match = identify_protected(raw)
+    match = identify_exclusive(raw)
     if match:
         car = match.car
         return dict(base, reward_type="CAR", classification_confidence=match.confidence,
                     year=car.year, manufacturer=car.manufacturer, model=car.canonical_model,
                     display_name=car.display_name, forza_edition=car.forza_edition,
-                    wheelspin_exclusive=True, protected=True)
+                    wheelspin_exclusive=True, protected=retain_match(raw),
+                    retain=retain_match(raw))
     categories = {
         "HORN": ("HORN",), "EMOTE": ("EMOTE", "DANCE"),
         "CLOTHING": ("JACKET", "SHIRT", "DRESS", "HOODIE", "TROUSERS", "SHORTS",
@@ -73,7 +74,8 @@ def classify_reward_text(raw_text):
         return dict(base, reward_type="CAR", classification_confidence=confidence,
                     year=int(years[0]), manufacturer=manufacturer, model=model,
                     display_name=raw, forza_edition="FORZA EDITION" in normalized,
-                    wheelspin_exclusive=None, protected=None)
+                    wheelspin_exclusive=None, protected=retain_match(raw),
+                    retain=retain_match(raw))
     return dict(base, reward_type="OTHER", classification_confidence=.55)
 
 

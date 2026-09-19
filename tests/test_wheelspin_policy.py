@@ -6,20 +6,21 @@ import pytest
 from fh6.wheelspin import (WheelspinPolicy, guarded_action,
                            match_dialog_reward, protected_keep_match)
 from fh6.wheelspin_catalog import lamborghini_candidate
+from fh6.wheelspin_catalog import retain_match, non_lamborghini_make_confirmed
 
 
 def test_unknown_car_fails_closed():
     decision = WheelspinPolicy().decide(dict(reward_type="CAR", duplicate=True,
-        protected=None, decision_confidence=.4))
+        retain=None, decision_confidence=.4))
     assert decision.action == "UNKNOWN_DECISION"
     assert decision.send_input is False
 
 
 def test_protected_duplicate_is_kept_and_other_duplicate_is_sold():
     policy = WheelspinPolicy()
-    keep = policy.decide(dict(reward_type="CAR", duplicate=True, protected=True,
+    keep = policy.decide(dict(reward_type="CAR", duplicate=True, retain=True,
                               decision_confidence=.99))
-    sell = policy.decide(dict(reward_type="CAR", duplicate=True, protected=False,
+    sell = policy.decide(dict(reward_type="CAR", duplicate=True, retain=False,
                               decision_confidence=.99))
     assert keep.action == "KEEP"
     assert sell.action == "SELL"
@@ -41,7 +42,7 @@ def test_focus_loss_and_f7_prevent_input():
 @pytest.mark.parametrize("name", [
     "M-B CLK-GTR", "Mercedes-Benz AMG CLK GTR", "Koenigsegg One:1",
     "Hennessey Venom GT", "Rimac Nevera", "Apollo IE",
-    "Ferrari 599XX Evo", "Lamborghini Sian", "Ferrari LaFerrari",
+    "Ferrari 599XX Evo", "Lamborghini Sian",
 ])
 def test_every_user_keep_alias_fails_closed_to_keep(name):
     assert protected_keep_match(name)
@@ -49,6 +50,29 @@ def test_every_user_keep_alias_fails_closed_to_keep(name):
 
 def test_unlisted_car_does_not_match_keep_aliases():
     assert not protected_keep_match("1979 Chevrolet Camaro Z28")
+    assert not retain_match("Ferrari LaFerrari")
+
+
+@pytest.mark.parametrize("name", [
+    "M-B CLK-GTR", "Mercedes-Benz AMG CLK GTR", "Koenigsegg One:1",
+    "ONE 1", "Hennessey Venom GT", "VENOM GT", "Rimac Nevera",
+    "NEVERA", "Apollo IE", "Intensa Emozione", "Ferrari 599XX Evolution",
+    "599XX Evo", "Sesto Elemento", "Centenario", "Murcielago",
+    "Huracan Tecnica", "Essenza SCV12", "Countach", "Aventador",
+    "Diablo GTR", "2027 LAMBORGHINI Unknown Model Forza Edition",
+])
+def test_only_user_keep_targets_are_kept(name):
+    assert retain_match(name)
+
+
+@pytest.mark.parametrize("name", [
+    "Nissan 240SX", "Porsche 911 GT2", "Ferrari 288 GTO", "Ferrari F355",
+    "McLaren 620R", "Ford F-450 FE", "Nissan GT-R FE",
+    "Wuling Sunshine FE", "Audi Sport quattro", "Ferrari LaFerrari",
+])
+def test_other_cars_are_sell_policy_with_positive_maker_evidence(name):
+    assert not retain_match(name)
+    assert non_lamborghini_make_confirmed(name)
 
 
 @pytest.mark.parametrize("name", [
@@ -78,12 +102,11 @@ def test_ambiguous_duplicate_identity_blocks_destructive_action():
     assert match_dialog_reward("FORD MUSTANG", rows) == (None, 0.0)
 
 
-def test_last_unresolved_car_is_unambiguous_after_other_duplicate_is_done():
+def test_single_unresolved_car_still_requires_identity_overlap():
     rows = [{"reward_id": 927, "reward_type": "CAR",
              "raw_ocr": "2016 CIS-V Sedan"}]
     result, confidence = match_dialog_reward("CADDY CTS V 16", rows)
-    assert result["reward_id"] == 927
-    assert confidence == 1.0
+    assert result is None and confidence == 0.0
 
 
 def test_single_other_reward_can_be_bound_by_native_duplicate_dialog():

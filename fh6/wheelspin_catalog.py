@@ -1,8 +1,8 @@
-"""Versioned, offline protected-car catalog for Wheelspin Lab.
+"""Wheelspin-exclusive catalog and independent user retention policy.
 
-Matches are deliberately exact: a year, manufacturer and model alias must all
-be present.  Rarity, card colour and the car image never grant protection by
-themselves.
+Catalog matches are deliberately exact: year, manufacturer and model must all
+be present. Catalog membership never grants retention; six named targets and
+any Lamborghini are the only KEEP rules.
 """
 from dataclasses import dataclass
 import re
@@ -23,16 +23,14 @@ def normalize_car_text(value):
 # User-owned retention policy. Native duplicate dialogs shorten maker/model
 # names (for example Mercedes-Benz AMG CLK GTR becomes M-B CLK-GTR), so every
 # destructive action must check these aliases in addition to the catalog.
-USER_KEEP_ALIASES = (
-    "CLK GTR", "M B CLK GTR", "MB CLK GTR",
-    "KOENIGSEGG ONE 1", "ONE 1",
-    "HENNESSEY VENOM GT", "VENOM GT",
-    "RIMAC NEVERA", "NEVERA",
-    "APOLLO INTENSA EMOZIONE", "APOLLO IE", "INTENSA EMOZIONE",
-    "FERRARI 599XX EVOLUTION", "599XX EVOLUTION", "599XX EVO",
-    "LAMBORGHINI SIAN", "SIAN",
-    "FERRARI LAFERRARI", "LAFERRARI",
-)
+NAMED_KEEP_ALIASES = {
+    "CLK GTR": ("CLK GTR", "M B CLK GTR", "MB CLK GTR"),
+    "ONE:1": ("KOENIGSEGG ONE 1", "ONE 1"),
+    "VENOM GT": ("HENNESSEY VENOM GT", "VENOM GT"),
+    "NEVERA": ("RIMAC NEVERA", "NEVERA"),
+    "APOLLO IE": ("APOLLO INTENSA EMOZIONE", "APOLLO IE", "INTENSA EMOZIONE"),
+    "599XX EVOLUTION": ("FERRARI 599XX EVOLUTION", "599XX EVOLUTION", "599XX EVO"),
+}
 
 # Native duplicate dialogs often omit the maker. Treat known Lamborghini
 # model-only names as protected even when the reward-card OCR loses its header.
@@ -43,10 +41,39 @@ LAMBORGHINI_MODEL_ALIASES = (
     "VENENO", "REVENTON", "URUS", "MIURA", "JALPA", "ESPADA",
 )
 
+LAMBORGHINI_MODEL_NAMES = {
+    "Sesto Elemento": ("SESTO ELEMENTO", "LAMBO SESTO"),
+    "Essenza SCV12": ("ESSENZA SCV12", "SCV12"),
+    "Countach": ("COUNTACH",),
+    "Huracan": ("HURACAN", "HURACEN"),
+    "Murcielago": ("MURCIELAGO",),
+    "Centenario": ("CENTENARIO",),
+    "Aventador": ("AVENTADOR",),
+    "Diablo": ("DIABLO",),
+    "Gallardo": ("GALLARDO",),
+    "Revuelto": ("REVUELTO",),
+    "Sian": ("SIAN",),
+    "Veneno": ("VENENO",),
+    "Reventon": ("REVENTON",),
+    "Urus": ("URUS",),
+    "Miura": ("MIURA",),
+    "Jalpa": ("JALPA",),
+    "Espada": ("ESPADA",),
+}
+
 
 def user_keep_match(value):
     text = normalize_car_text(value)
-    return any(f" {alias} " in f" {text} " for alias in USER_KEEP_ALIASES)
+    return any(f" {alias} " in f" {text} "
+               for aliases in NAMED_KEEP_ALIASES.values() for alias in aliases)
+
+
+def named_keep_target(value):
+    text = normalize_car_text(value)
+    for name, aliases in NAMED_KEEP_ALIASES.items():
+        if any(f" {alias} " in f" {text} " for alias in aliases):
+            return name
+    return None
 
 
 def lamborghini_candidate(value):
@@ -55,15 +82,60 @@ def lamborghini_candidate(value):
     return any(f" {alias} " in f" {text} " for alias in aliases)
 
 
+def lamborghini_model_name(value):
+    text = normalize_car_text(value)
+    for model, aliases in LAMBORGHINI_MODEL_NAMES.items():
+        if any(f" {alias} " in f" {text} " for alias in aliases):
+            return model
+    return "Unknown model" if lamborghini_candidate(text) else None
+
+
+def retain_match(value):
+    """User policy only: six named cars or any identifiable Lamborghini."""
+    return user_keep_match(value) or lamborghini_candidate(value)
+
+
+NON_LAMBORGHINI_MAKERS = (
+    "ABARTH", "ACURA", "ALFA ROMEO", "ASTON MARTIN", "AUDI", "BENTLEY",
+    "BMW", "BUGATTI", "CADILLAC", "CHEVROLET", "CHRYSLER", "DATSUN",
+    "DODGE", "FERRARI", "FIAT", "FORD", "GENESIS", "HONDA", "HUMMER",
+    "HYUNDAI", "INFINITI", "JAGUAR", "JEEP", "KOENIGSEGG", "LANCIA",
+    "LAND ROVER", "LEXUS", "LOTUS", "MASERATI", "MAZDA", "MCLAREN",
+    "MERCEDES BENZ", "MERCEDES AMG", "MINI", "MITSUBISHI", "NISSAN",
+    "PAGANI", "PEUGEOT", "PLYMOUTH", "PORSCHE", "RELIANT", "RENAULT",
+    "RIMAC", "ROLLS ROYCE", "SAAB", "SEAT", "SHELBY", "SUBARU",
+    "SUZUKI", "TOYOTA", "TVR", "VAUXHALL", "VOLKSWAGEN", "VOLVO",
+    "WULING", "KTM", "SIERRA CARS", "RAM",
+)
+
+
+def non_lamborghini_make_confirmed(value):
+    """Require positive maker evidence before selling an unprotected car."""
+    text = normalize_car_text(value)
+    return not retain_match(text) and any(
+        f" {make} " in f" {text} " for make in NON_LAMBORGHINI_MAKERS)
+
+
+def model_identity_overlap(card_text, dialog_text):
+    """Require a distinctive shared model token, never just a shared maker."""
+    maker_tokens = {part for make in NON_LAMBORGHINI_MAKERS for part in make.split()}
+    ignored = maker_tokens | {"THE", "CAR", "FORZA", "EDITION", "FE", "AND"}
+    def tokens(value):
+        return {part for part in normalize_car_text(value).split()
+                if part not in ignored and not re.fullmatch(r"(?:19|20)\d{2}", part)
+                and (len(part) >= 3 or any(char.isdigit() for char in part))}
+    return bool(tokens(card_text) & tokens(dialog_text))
+
+
 @dataclass(frozen=True)
-class ProtectedCar:
+class ExclusiveCar:
     year: int
     manufacturer: str
     canonical_model: str
     known_display_aliases: tuple = ()
     forza_edition: bool = False
     official_route: str = "Wheelspin, Seasonal"
-    protected: bool = True
+    wheelspin_exclusive: bool = True
 
     @property
     def display_name(self):
@@ -76,16 +148,16 @@ class ProtectedCar:
 
 @dataclass(frozen=True)
 class CatalogMatch:
-    car: ProtectedCar
+    car: ExclusiveCar
     confidence: float
     evidence: tuple
 
 
 def C(year, make, model, *aliases, fe=False):
-    return ProtectedCar(year, make, model, tuple(aliases), fe)
+    return ExclusiveCar(year, make, model, tuple(aliases), fe)
 
 
-PROTECTED_CARS = (
+EXCLUSIVE_CARS = (
     C(2019, "Apollo", "Intensa Emozione", "Apollo IE"),
     C(2019, "Aston Martin", "DBS Superleggera"),
     C(2019, "Aston Martin", "Valhalla Concept Car", "Valhalla Concept"),
@@ -133,7 +205,7 @@ PROTECTED_CARS = (
     C(2013, "Wuling", "Sunshine S Forza Edition", fe=True),
 )
 
-PRIORITY_TARGETS = tuple(car.identity for car in PROTECTED_CARS if car.display_name in {
+PRIORITY_TARGETS = tuple(car.identity for car in EXCLUSIVE_CARS if car.display_name in {
     "2019 Apollo Intensa Emozione", "2015 Koenigsegg One:1",
     "1998 Mercedes-Benz AMG CLK GTR", "2012 Hennessey Venom GT",
     "2012 Ferrari 599XX Evolution", "2011 Lamborghini Sesto Elemento",
@@ -145,12 +217,12 @@ def _phrase_present(phrase, text):
     return f" {normalize_car_text(phrase)} " in f" {text} "
 
 
-def identify_protected(raw_text):
+def identify_exclusive(raw_text):
     """Return an exact catalog match or None; partial OCR always fails closed."""
     text = normalize_car_text(raw_text)
     years = {int(value) for value in re.findall(r"(?<!\d)(19\d{2}|20\d{2})(?!\d)", text)}
     matches = []
-    for car in PROTECTED_CARS:
+    for car in EXCLUSIVE_CARS:
         if years != {car.year} or not _phrase_present(car.manufacturer, text):
             # Mercedes-AMG cards may spell the maker as MERCEDES BENZ while
             # keeping AMG in the model line; accept only that explicit family.
@@ -165,5 +237,8 @@ def identify_protected(raw_text):
     return matches[0] if len(matches) == 1 else None
 
 
-assert len(PROTECTED_CARS) == 45
-assert len({car.identity for car in PROTECTED_CARS}) == 45
+PROTECTED_CARS = EXCLUSIVE_CARS  # compatibility name; never use it for retention
+identify_protected = identify_exclusive  # compatibility name; catalog only
+
+assert len(EXCLUSIVE_CARS) == 45
+assert len({car.identity for car in EXCLUSIVE_CARS}) == 45

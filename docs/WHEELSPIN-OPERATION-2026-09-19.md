@@ -317,6 +317,6 @@ These are the only Lamborghini duplicates the automation kept in this run. Four 
 
 - `summary.json` — machine-readable operation summary.
 - `sessions.csv`, `spins.csv`, `rewards.csv`, `car_pulls.csv` — complete session ledger.
-- `exclusive_summary.csv` — protected catalog observation summary.
+- `exclusive_summary.csv` — 45-car catalog observation summary; catalog membership does not determine retention.
 
 All figures come from the durable SQLite ledger and saved native game evidence. Historical incident rows preserve the action that actually occurred; they are not rewritten as successful Keeps.

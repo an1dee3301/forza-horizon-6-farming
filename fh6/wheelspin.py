@@ -15,11 +15,10 @@ import cv2
 import forza_cycle as core
 
 from .ocr import normalize
-from .wheelspin_catalog import identify_protected
 from .wheelspin_history import WheelspinStore
 from .wheelspin_recognition import (capture_reward_observation,
                                     read_reward_observation, stable_rewards)
-from .wheelspin_catalog import normalize_car_text, user_keep_match, lamborghini_candidate
+from .wheelspin_catalog import normalize_car_text, lamborghini_candidate, retain_match
 import re
 from collections import Counter
 
@@ -29,19 +28,17 @@ AUTO_ACTIONS_SETTING = "wheelspin_auto_actions_enabled"
 
 
 def protected_keep_match(value):
-    return user_keep_match(value)
+    return retain_match(value)
 
 
 def match_dialog_reward(dialog_name, rows):
     """Match a native duplicate name to its committed reward card.
 
     Duplicate prompts are not guaranteed to follow slot order.  A one-car
-    result is unambiguous; multi-car results require a unique shared model
-    token before any destructive decision is allowed.
+    result still needs a shared model token. Multi-car results additionally
+    require a unique best match before any destructive decision is allowed.
     """
     rows = list(rows)
-    if len(rows) == 1:
-        return rows[0], 1.0
     dialog = normalize_car_text(dialog_name)
     ignored = {"CAR", "THE", "AND", "FORZA", "EDITION", "FE", "M", "B"}
     def tokens(value):
@@ -113,11 +110,11 @@ class WheelspinPolicy:
         if reward.get("reward_type") != "CAR" or reward.get("duplicate") is not True:
             return Decision("AUTO_ADDED", 1.0, False, "No duplicate action exists")
         confidence = float(reward.get("decision_confidence") or 0)
-        protected = reward.get("protected")
-        if confidence < self.threshold or protected not in {True, False}:
+        retain = reward.get("retain")
+        if confidence < self.threshold or retain not in {True, False}:
             return Decision("UNKNOWN_DECISION", confidence, False,
                             "Exact year, manufacturer and model were not proven")
-        if protected:
+        if retain:
             return Decision("KEEP", confidence, True, "Protected Wheelspin, Seasonal catalog match")
         return Decision("SELL", confidence, True, "Confident non-protected duplicate")
 
@@ -277,7 +274,9 @@ class WheelspinLab:
         raw = " ".join(line.text for line in obs.doc.lines)
         text = normalize_car_text(raw)
         match = re.search(r"THIS CAR\s+(.+?)\s+ADD TO GARAGE", text)
-        dialog_name = match.group(1).strip() if match else text
+        if match is None:
+            raise RuntimeError("Native duplicate car name is unreadable; Sell blocked")
+        dialog_name = match.group(1).strip()
         # Match the dialog identity to the committed card. FH6 can present
         # multiple duplicates in an order that differs from the three reels.
         # Slot-order association sold the CLK GTR in incident spin 262.
@@ -316,14 +315,15 @@ class WheelspinLab:
         # A prompt/card association can still be wrong when multiple cars
         # arrive in one spin. Until every protected-looking card is resolved,
         # keeping the current car is safer than selling a misbound reward.
-        unresolved_protected = any(
-            row.get("protected") == 1 or
+        unresolved_other_protected = any(
+            row.get("retain") == 1 or
             protected_keep_match(row.get("raw_ocr") or "") or
             lamborghini_candidate(row.get("raw_ocr") or "")
-            for row in candidates
+            for row in candidates if row["reward_id"] != reward["reward_id"]
         )
-        keep = (protected_keep_match(combined) or
-                lamborghini_candidate(combined) or unresolved_protected)
+        keep = retain_match(combined)
+        if unresolved_other_protected and not keep:
+            raise RuntimeError("Protected and unprotected duplicate association is ambiguous; Sell blocked for review")
         action = "KEEP" if keep else "SELL"
         if reward.get("action_attempted") and not reward.get("action_verified"):
             self.store.clear_unaccepted_action(spin_id, reward["reward_id"],
@@ -331,7 +331,7 @@ class WheelspinLab:
         identity = dict(year=reward.get("year"), manufacturer=reward.get("manufacturer"),
                         model=reward.get("model") or dialog_name,
                         display_name=dialog_name,
-                        protected=keep, wheelspin_exclusive=keep)
+                        retain=keep)
         self.store.associate_duplicate(spin_id, reward["reward_id"], identity,
                                        association_confidence, path)
         self.store.plan_decision(spin_id, reward["reward_id"], action,
@@ -350,7 +350,8 @@ class WheelspinLab:
                          if row["reward_id"] == reward["reward_id"])
         if refreshed.get("action_attempted") == action and not refreshed.get("action_verified"):
             self.store.clear_unaccepted_action(spin_id, reward["reward_id"], action, path)
-        self.store.assert_action_allowed(spin_id, reward["reward_id"], action)
+        self.store.assert_action_allowed(spin_id, reward["reward_id"], action,
+                                         dialog_name if action == "SELL" else None)
         from .navigation import focus_boxes
         def row_index(item):
             rows = [y for x, y, w, h in focus_boxes(item.frame)
@@ -377,7 +378,15 @@ class WheelspinLab:
             self.nav.key(key)
             self.nav.until(lambda item, expected=expected: row_index(item) == expected,
                            f"duplicate row {expected + 1}", timeout=1.2)
-        self.store.action_attempted(spin_id, reward["reward_id"], action)
+        fresh = self.nav.observe()
+        if fresh.screen != "wheelspin_duplicate" or row_index(fresh) != target:
+            raise RuntimeError("Duplicate dialog changed before action; Sell blocked")
+        fresh_text = normalize_car_text(" ".join(line.text for line in fresh.doc.lines))
+        fresh_match = re.search(r"THIS CAR\s+(.+?)\s+ADD TO GARAGE", fresh_text)
+        if fresh_match is None:
+            raise RuntimeError("Current duplicate identity unreadable before action")
+        live_name = fresh_match.group(1).strip()
+        self.store.action_attempted(spin_id, reward["reward_id"], action, live_name)
         self.nav.key("enter")
         self.nav.until(lambda item: item.screen != "wheelspin_duplicate" or
                       dialog_name not in normalize_car_text(" ".join(line.text for line in item.doc.lines)),

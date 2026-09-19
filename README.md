@@ -6,13 +6,15 @@ The current dashboard now includes **Wheelspin Lab**. Choose SUPER or REGULAR,
 enter the quantity, and begin with **Dry Run** and **Stop on unknown** enabled.
 Every resolved screen and slot crop is durably committed to
 `runs/wheelspin_lab.sqlite` before Collect or duplicate processing. Exact
-year/manufacturer/model matching protects the versioned 45-car catalog.
-Automatic sell/keep confirmations stay activation-gated until live calibration.
+year/manufacturer/model matching classifies the versioned 45-car catalog for
+statistics only. The KEEP policy is **CLK GTR, One:1, Venom GT, Nevera,
+Apollo IE, 599XX Evolution, and every Lamborghini**. Other confidently
+identified duplicates are sold. A fresh duplicate-dialog read and the saved
+reward evidence must both clear the final Sell guard; ambiguity stops for
+review. Automatic confirmations remain disabled until live validation.
 
-The completed 500-spin validation, including the full reward ledger, exact
-verified sale credits, kept-car list, timing percentiles, failures, recovery
-events, and audited safety incidents, is published in
-[the September 19 Wheelspin operation report](docs/WHEELSPIN-OPERATION-2026-09-19.md).
+The completed 500-spin validation and audited safety incidents are documented
+in [the September 19 Wheelspin operation report](docs/WHEELSPIN-OPERATION-2026-09-19.md).
 
 Double-click **Start FH6 Auto.cmd** or **FH6 Auto.pyw**. Both open the same dashboard.
 The downloaded repository's **Start Local FH6.cmd** opens it too. Run **Setup FH6

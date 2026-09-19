@@ -129,7 +129,7 @@ class LocalPanel {
         this.tabs.UseTab(6)
         this.gui.SetFont("s10 cF4FBFB", "Bahnschrift")
         this.analyticsHeader := this.gui.AddText("x46 y158 w650 h78", "Collecting mission measurements…")
-        this.analyticsChoice := this.gui.AddDropDownList("x46 y244 w300 Choose5", ["Car cycles", "Farm runs", "Batch SP refills", "Stage P50 / P90 / P99", "Throughput / mission", "Failure causes / cost", "Transition latency", "Time attribution", "Wheelspin exclusives"])
+        this.analyticsChoice := this.gui.AddDropDownList("x46 y244 w300 Choose5", ["Car cycles", "Farm runs", "Batch SP refills", "Stage P50 / P90 / P99", "Throughput / mission", "Failure causes / cost", "Transition latency", "Time attribution", "Wheelspin exclusives", "Wheelspin keeps"])
         this.analyticsChoice.OnEvent("Change", ObjBindMethod(this, "RefreshAnalytics"))
         this.analyticsGrid := this.gui.AddListView("x46 y283 w650 h174 Background0C131A cF4FBFB Grid", ["Step", "Mean s", "Median s", "Min s", "Max s", "Samples", ""])
         this.analyticsData := Map()
@@ -411,7 +411,7 @@ class LocalPanel {
                 . "`n`nSUPER " get("lab_super_spins", "0") "    REGULAR " get("lab_regular_spins", "0")
                 . "    SLOTS " get("lab_reward_slots", "0")
                 . "`nCAR REWARDS " get("lab_car_rewards", "0") "    DUPLICATES " get("lab_duplicates", "0")
-                . "`nPROTECTED " get("lab_exclusive_pulls", "0") "    SOLD " get("lab_sold", "0") "    RETAINED " get("lab_retained", "0")
+                . "`nEXCLUSIVE " get("lab_exclusive_pulls", "0") "    SOLD " get("lab_sold", "0") "    KEPT " get("lab_retained", "0")
                 . "`nSELL CR " get("lab_sell_cr", "0")
                 . "`n`nEVERY REWARD COMMITTED BEFORE PROCESSING"
                 . "`nACTIVE " get("elapsed") "    " get("window_left")
@@ -450,7 +450,7 @@ class LocalPanel {
     }
 
     RefreshAnalytics(*) {
-        views := ["cars", "farms", "refills", "steps", "overview", "failures", "transitions", "attribution", "wheelspin"]
+        views := ["cars", "farms", "refills", "steps", "overview", "failures", "transitions", "attribution", "wheelspin", "retention"]
         index := this.analyticsChoice.Value
         key := "analytics_" views[index]
         content := this.analyticsData.Get(key, "")
@@ -466,7 +466,8 @@ class LocalPanel {
                     ["Cause", "Count", "/100 cars", "Cost s", "P50 cost", "P90 cost", "Samples"],
                     ["Stage", "Change50", "Change90", "Ready50", "Ready90", "Total99", "Samples"],
                     ["Category", "Seconds", "Meaning", "", "", "", ""],
-                    ["Protected car", "Count", "First seen", "Last seen", "/100 SWP", "", ""]]
+                    ["Exclusive car", "Count", "First seen", "Last seen", "/100 SWP", "", ""],
+                    ["Keep target / model", "Pulls", "Scope", "", "", "", ""]]
         this.analyticsGrid.Delete()
         for n, title in columns[index]
             this.analyticsGrid.ModifyCol(n, (index = 5 || index = 8) ? (n = 1 ? 145 : n = 2 ? 110 : n = 3 ? 390 : 0) : (n = 1 ? 138 : 78), title)

@@ -157,11 +157,11 @@ class Status:
                     from fh6.wheelspin_history import WheelspinStore
                     from fh6.wheelspin_stats import dashboard_data
                     lab = dashboard_data(WheelspinStore(WORKSPACE/'runs/wheelspin_lab.sqlite'))
-                    totals, exclusives = lab['totals'], lab['exclusives']
+                    totals, exclusives, retention = lab['totals'], lab['exclusives'], lab['retention']
                     self.data.update(
                         lab_super_spins=totals['super_spins'], lab_regular_spins=totals['regular_spins'],
                         lab_reward_slots=totals['reward_slots'], lab_car_rewards=totals['car_rewards'],
-                        lab_duplicates=totals['duplicate_cars'], lab_exclusive_pulls=totals['protected_exclusive_pulls'],
+                        lab_duplicates=totals['duplicate_cars'], lab_exclusive_pulls=totals['exclusive_pulls'],
                         lab_sold=totals['cars_sold'], lab_retained=totals['cars_retained'], lab_sell_cr=totals['sell_cr'],
                         analytics_header=(f"WHEELSPIN LAB  •  {totals['super_spins']:,} SWP  •  "
                             f"{totals['reward_slots']:,} slots  •  {totals['car_rewards']:,} cars\n"
@@ -171,8 +171,9 @@ class Status:
                             f"Super spins^{totals['super_spins']:,}^Recorded complete",
                             f"Reward slots^{totals['reward_slots']:,}^All reward types",
                             f"Car rewards^{totals['car_rewards']:,}^Observed cards",
-                            f"Protected pulls^{totals['protected_exclusive_pulls']:,}^Observed cards",
-                            f"Protected kept^{totals['protected_retained']:,}^Verified actions",
+                            f"Exclusive pulls^{totals['exclusive_pulls']:,}^Catalog classification",
+                            f"Policy keeps^{totals['policy_keep_pulls']:,}^Six named cars + Lamborghinis",
+                            f"Keeps verified^{totals['protected_retained']:,}^Verified actions",
                             f"Protected sold^{totals['protected_sold']:,}^Historical errors",
                             f"Cars sold^{totals['cars_sold']:,}^Verified actions",
                             f"Sell CR^{totals['sell_cr']:,}^Known verified offers",
@@ -182,6 +183,11 @@ class Status:
                             f"{row['pulls_per_100_super_spins']:.3f}" if row['pulls_per_100_super_spins'] is not None else
                             f"{row['car']}^{row['count']}^{row['first_seen'] or '—'}^{row['last_seen'] or '—'}^—"
                             for row in exclusives),
+                        analytics_retention="~".join(
+                            [f"{name}^{count}^Named KEEP" for name, count in retention['named'].items()] +
+                            [f"Lamborghini total^{retention['lamborghini_total']}^All models"] +
+                            [f"Lamborghini: {model}^{count}^Model observed"
+                             for model, count in retention['lamborghini_models'].items()]),
                     )
                 except Exception:
                     self.data['analytics_header'] = 'Wheelspin Lab measurements temporarily unavailable.'
