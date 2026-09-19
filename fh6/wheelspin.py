@@ -19,7 +19,7 @@ from .wheelspin_catalog import identify_protected
 from .wheelspin_history import WheelspinStore
 from .wheelspin_recognition import (capture_reward_observation,
                                     read_reward_observation, stable_rewards)
-from .wheelspin_catalog import normalize_car_text, user_keep_match
+from .wheelspin_catalog import normalize_car_text, user_keep_match, lamborghini_candidate
 import re
 from collections import Counter
 
@@ -309,14 +309,21 @@ class WheelspinLab:
         # drive the decision. display_name can contain a stale association
         # from a previously interrupted attempt.
         combined = f"{dialog_name} {reward.get('raw_ocr') or ''}"
-        normalized_combined = normalize_car_text(combined)
         # The fast skip can capture the reward during Forza's white/gold
         # flash, making a gold card appear NEUTRAL.  Retaining every
         # Lamborghini is the only destructive-action-safe interpretation of
         # "keep every gold Lambo" without slowing every spin for the fade.
-        lamborghini = any(name in normalized_combined
-                          for name in ("LAMBORGHINI", "LAMBO"))
-        keep = protected_keep_match(combined) or lamborghini
+        # A prompt/card association can still be wrong when multiple cars
+        # arrive in one spin. Until every protected-looking card is resolved,
+        # keeping the current car is safer than selling a misbound reward.
+        unresolved_protected = any(
+            row.get("protected") == 1 or
+            protected_keep_match(row.get("raw_ocr") or "") or
+            lamborghini_candidate(row.get("raw_ocr") or "")
+            for row in candidates
+        )
+        keep = (protected_keep_match(combined) or
+                lamborghini_candidate(combined) or unresolved_protected)
         action = "KEEP" if keep else "SELL"
         if reward.get("action_attempted") and not reward.get("action_verified"):
             self.store.clear_unaccepted_action(spin_id, reward["reward_id"],

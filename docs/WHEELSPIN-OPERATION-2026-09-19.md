@@ -13,6 +13,11 @@ Session `20260919_023755_1d4d8f4f` ran from `2026-09-18T17:37:55.511+00:00` to `
 | Other/cosmetic rewards | 25 |
 | Duplicate cars sold | 346 |
 | Duplicate cars kept | 3 |
+| Protected car pulls | 8 |
+| Protected car pulls sold in error | 5 |
+| Protected car pulls kept | 3 |
+| Lamborghini duplicates sold in error | 4 |
+| Lamborghini duplicates kept | 3 |
 | First-time cars automatically added by Forza | 0 |
 | Direct credit rewards | 85,141,000 CR |
 | Verified duplicate-sale credits | 48,780,000 CR |
@@ -30,6 +35,8 @@ Session `20260919_023755_1d4d8f4f` ran from `2026-09-18T17:37:55.511+00:00` to `
 | Spin duration P99 | 609.24 s |
 
 ## Kept duplicate cars
+
+These are the only Lamborghini duplicates the automation kept in this run. Four others were sold in error, including the Sesto Elemento; they cannot be counted as retained inventory.
 
 | Model | Count |
 |---|---:|
@@ -275,6 +282,7 @@ Session `20260919_023755_1d4d8f4f` ran from `2026-09-18T17:37:55.511+00:00` to `
 - Historical duplicate-association repairs: **7**
 - Sale-value OCR misses recorded during live action: **5**; saved evidence was retained and the ledger never substitutes zero or a guessed value.
 - Protected-sale incidents identified in the audit: **5**.
+- Automatic Wheelspin Lab actions are disabled locally pending a fresh live safety validation. The farming worker does not sell cars.
 
 | Failure reason | Count |
 |---|---:|
@@ -293,7 +301,7 @@ Session `20260919_023755_1d4d8f4f` ran from `2026-09-18T17:37:55.511+00:00` to `
 - Credit and numeric-only slots are excluded from duplicate-car candidates.
 - Cars classified as `OTHER` remain eligible for identity matching when the native duplicate dialog proves a car exists.
 - Every protected model alias is checked again immediately before a Sell input.
-- Every Lamborghini duplicate is retained because the accelerated reward flash makes gold-card color unreliable.
+- The current sell guard retains every recognized Lamborghini duplicate because the accelerated reward flash makes gold-card color unreliable. Four Lamborghini duplicates in this completed run were sold before that guard was in place; see the incidents below.
 - Sale values use multi-view OCR; unreadable values remain unknown rather than being guessed.
 - Completed reward records and actions survive retries and process restarts.
 

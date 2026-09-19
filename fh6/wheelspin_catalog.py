@@ -34,10 +34,25 @@ USER_KEEP_ALIASES = (
     "FERRARI LAFERRARI", "LAFERRARI",
 )
 
+# Native duplicate dialogs often omit the maker. Treat known Lamborghini
+# model-only names as protected even when the reward-card OCR loses its header.
+LAMBORGHINI_MODEL_ALIASES = (
+    "SESTO ELEMENTO", "ESSENZA SCV12", "SCV12", "COUNTACH",
+    "HURACAN", "HURACEN", "MURCIELAGO", "CENTENARIO",
+    "AVENTADOR", "DIABLO", "GALLARDO", "REVUELTO", "SIAN",
+    "VENENO", "REVENTON", "URUS", "MIURA", "JALPA", "ESPADA",
+)
+
 
 def user_keep_match(value):
     text = normalize_car_text(value)
     return any(f" {alias} " in f" {text} " for alias in USER_KEEP_ALIASES)
+
+
+def lamborghini_candidate(value):
+    text = normalize_car_text(value)
+    aliases = ("LAMBORGHINI", "LAMBO", *LAMBORGHINI_MODEL_ALIASES)
+    return any(f" {alias} " in f" {text} " for alias in aliases)
 
 
 @dataclass(frozen=True)

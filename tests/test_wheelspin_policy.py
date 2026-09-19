@@ -5,6 +5,7 @@ import pytest
 
 from fh6.wheelspin import (WheelspinPolicy, guarded_action,
                            match_dialog_reward, protected_keep_match)
+from fh6.wheelspin_catalog import lamborghini_candidate
 
 
 def test_unknown_car_fails_closed():
@@ -48,6 +49,14 @@ def test_every_user_keep_alias_fails_closed_to_keep(name):
 
 def test_unlisted_car_does_not_match_keep_aliases():
     assert not protected_keep_match("1979 Chevrolet Camaro Z28")
+
+
+@pytest.mark.parametrize("name", [
+    "Sesto Elemento", "Essenza SCV12", "Countach LPI 800-4",
+    "Huracan Tecnica", "Huracén Tecnica", "Centenario LP 770-4",
+])
+def test_lamborghini_model_only_dialogs_are_protected(name):
+    assert lamborghini_candidate(name)
 
 
 def test_multiple_duplicate_dialogs_are_matched_by_identity_not_slot_order():

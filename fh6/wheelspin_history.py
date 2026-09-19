@@ -150,23 +150,39 @@ class WheelspinStore:
     def assert_action_allowed(self, spin_id, reward_id, action):
         spin = self.spin(spin_id)
         row = self.db.execute("SELECT * FROM rewards WHERE spin_id=? AND reward_id=?", (spin_id, reward_id)).fetchone()
-        assert spin["rewards_committed"] == 1 and row is not None, "reward screen and slots must be durably committed"
+        if spin["rewards_committed"] != 1 or row is None:
+            raise AssertionError("reward screen and slots must be durably committed")
         if action == "SELL":
-            assert row["protected"] == 0, "protected or unknown car may not be sold"
+            if row["protected"] != 0:
+                raise AssertionError("protected or unknown car may not be sold")
             # Independent destructive-action interlock. Recheck immutable
             # card OCR and native-dialog identity so a matcher regression
             # cannot sell a user-protected car.
-            from .wheelspin_catalog import normalize_car_text, user_keep_match
+            from .wheelspin_catalog import user_keep_match, lamborghini_candidate
             identity_text = " ".join(str(row[key] or "") for key in
                                      ("raw_ocr", "display_name", "manufacturer", "model"))
-            assert not user_keep_match(identity_text), "protected keep-list alias may not be sold"
-            normalized = normalize_car_text(identity_text)
-            assert not ("LAMBORGHINI" in normalized or "LAMBO" in normalized), \
-                "Lamborghini may not be sold while gold-card color is uncertain"
-        assert row["decision"] == action, "decision must be committed before action"
-        assert not row["action_verified"], "action already verified; never repeat it"
-        assert row["action_attempted"] is None, "ambiguous attempted action requires fresh screen detection"
-        assert row["decision_confidence"] is not None and row["decision_confidence"] >= .97, "decision confidence below threshold"
+            if user_keep_match(identity_text):
+                raise AssertionError("protected keep-list alias may not be sold")
+            if lamborghini_candidate(identity_text):
+                raise AssertionError("Lamborghini may not be sold while gold-card color is uncertain")
+            other_cards = self.db.execute(
+                "SELECT raw_ocr,protected FROM rewards WHERE spin_id=? AND reward_id<>? "
+                "AND action_verified=0 AND reward_type NOT IN "
+                "('CREDITS','CLOTHING','HORN','EMOTE','COSMETIC')",
+                (spin_id, reward_id)).fetchall()
+            if any(card["protected"] == 1 or
+                   user_keep_match(card["raw_ocr"]) or
+                   lamborghini_candidate(card["raw_ocr"])
+                   for card in other_cards):
+                raise AssertionError("unresolved protected card in this spin blocks Sell")
+        if row["decision"] != action:
+            raise AssertionError("decision must be committed before action")
+        if row["action_verified"]:
+            raise AssertionError("action already verified; never repeat it")
+        if row["action_attempted"] is not None:
+            raise AssertionError("ambiguous attempted action requires fresh screen detection")
+        if row["decision_confidence"] is None or row["decision_confidence"] < .97:
+            raise AssertionError("decision confidence below threshold")
         if action == "SELL":
             pass
         elif action == "KEEP":
@@ -261,6 +277,8 @@ class WheelspinStore:
           COUNT(DISTINCT CASE WHEN s.spin_type='REGULAR' AND s.status='COMPLETE' THEN s.spin_id END) regular_spins,
           COUNT(r.reward_id) reward_slots, SUM(r.reward_type='CAR') car_rewards,
           SUM(COALESCE(r.duplicate,0)) duplicate_cars, SUM(COALESCE(r.protected,0)) protected_exclusive_pulls,
+          SUM(r.protected=1 AND r.decision='SELL' AND r.action_verified=1) protected_sold,
+          SUM(r.protected=1 AND r.decision='KEEP' AND r.action_verified=1) protected_retained,
           SUM(r.decision='SELL' AND r.action_verified=1) cars_sold,
           SUM(r.decision='KEEP' AND r.action_verified=1) cars_retained,
           SUM(CASE WHEN r.decision='SELL' AND r.action_verified=1 THEN COALESCE(r.sell_value_if_known,0) ELSE 0 END) sell_cr

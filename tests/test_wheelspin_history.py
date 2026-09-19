@@ -81,6 +81,8 @@ def test_restart_cannot_repeat_verified_sell(tmp_path):
 def test_sesto_and_nevera_baseline_ownership_never_creates_pull_rows(tmp_path):
     store = WheelspinStore(tmp_path / "lab.sqlite")
     assert store.global_stats()["protected_exclusive_pulls"] == 0
+    assert store.global_stats()["protected_sold"] == 0
+    assert store.global_stats()["protected_retained"] == 0
 
 
 def test_destructive_interlock_blocks_abbreviated_keep_alias_even_if_flag_is_wrong(tmp_path):
@@ -106,4 +108,31 @@ def test_destructive_interlock_blocks_lamborghini_even_when_flash_hides_gold(tmp
     car = store.rewards(spin)[0]
     store.plan_decision(spin, car["reward_id"], "SELL", 1.0)
     with pytest.raises(AssertionError, match="Lamborghini"):
+        store.assert_action_allowed(spin, car["reward_id"], "SELL")
+
+
+def test_destructive_interlock_blocks_model_only_lamborghini(tmp_path):
+    store = WheelspinStore(tmp_path / "lab.sqlite")
+    session = store.start_session(1, "SUPER", False, True)
+    spin = store.start_spin(session, 1, "SUPER")
+    store.commit_rewards(spin, [reward(1, "CAR", raw_ocr="Essenza SCV12",
+        model="Essenza SCV12", duplicate=True, protected=False,
+        decision_confidence=1.0), reward(2), reward(3)])
+    car = store.rewards(spin)[0]
+    store.plan_decision(spin, car["reward_id"], "SELL", 1.0)
+    with pytest.raises(AssertionError, match="Lamborghini"):
+        store.assert_action_allowed(spin, car["reward_id"], "SELL")
+
+
+def test_other_unresolved_protected_card_blocks_sell(tmp_path):
+    store = WheelspinStore(tmp_path / "lab.sqlite")
+    session = store.start_session(1, "SUPER", False, True)
+    spin = store.start_spin(session, 1, "SUPER")
+    store.commit_rewards(spin, [reward(1, "CAR", raw_ocr="2010 FORD Focus RS",
+        manufacturer="FORD", model="Focus RS", duplicate=True,
+        protected=False, decision_confidence=1.0),
+        reward(2, "CAR", raw_ocr="Sesto Elemento", duplicate=True), reward(3)])
+    car = store.rewards(spin)[0]
+    store.plan_decision(spin, car["reward_id"], "SELL", 1.0)
+    with pytest.raises(AssertionError, match="unresolved protected"):
         store.assert_action_allowed(spin, car["reward_id"], "SELL")
