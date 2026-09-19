@@ -743,6 +743,12 @@ class FarmNavigator(Navigator):
         else:
             self.verified_farm_profile = None
 
+    def invalidate_farm_settings(self):
+        if self.setup_checks is not None:
+            self.setup_checks.invalidate_full()
+        else:
+            self.verified_farm_profile = None
+
     def search_challenge(self, profile):
         obs = self.observe()
         if obs.screen == 'challenge_browser':
@@ -993,7 +999,8 @@ class Challenge:
             return
         deadline = time.monotonic()+p.duration_seconds+120
         from .farm_motion import (StationaryWatch, scene_is_moving,
-                                  speed_from_frame, anti_afk_interval)
+                                  speed_from_frame, motion_evidence,
+                                  anti_afk_interval)
         refresh_interval = anti_afk_interval(p)
         movement = time.monotonic()
         bank_pulse_at = time.monotonic() + BANK_PULSE_SECONDS
@@ -1070,15 +1077,11 @@ class Challenge:
                         # above. Read only a small speed HUD crop every 7s.
                         visual_motion = scene_is_moving(previous_motion_frame, obs.frame)
                         previous_motion_frame = obs.frame.copy()
-                        # OpenCV motion is the cheap common path. Windows OCR
-                        # is reserved for a visually stationary/unknown frame,
-                        # where an exact non-zero speed can veto recovery. This
-                        # removes roughly 200 synchronous OCR jobs per full run.
-                        speed = (None if visual_motion is True else
-                                 speed_from_frame(nav.reader, obs.frame))
-                        effective_speed = (1 if visual_motion is True else
-                                           speed if speed is not None else
-                                           0 if visual_motion is False else None)
+                        # Animated tunnel props can move while the car is
+                        # wedged. Read the numeric speedometer on every sample;
+                        # an exact zero overrides that misleading scene motion.
+                        speed = speed_from_frame(nav.reader, obs.frame)
+                        effective_speed = motion_evidence(speed, visual_motion)
                         nav.check()
                         self.data['motion_speed_reads'] = self.data.get('motion_speed_reads', 0)+1
                         if effective_speed is not None:
@@ -1286,8 +1289,8 @@ class Challenge:
                     if self.data.get('exit_reason')=='intentional_target_top_up':
                         from .analytics import save
                         save(core.BASE/'runs/early_exit_validation.json',dict(disabled=True,reason='Early exit retained no SP',challenge_id=identifier))
-                    nav.invalidate_farm_video()
-                    self.emit('log', 'No retained SP increase. Rechecking frame rate and retrying the challenge.')
+                    nav.invalidate_farm_settings()
+                    self.emit('log', 'No retained SP increase. Rechecking farm difficulty, Skills HUD and frame rate before retrying.')
                     self.save(phase='prepare', empty_attempts=self.data.get('empty_attempts', 0)+1)
                     nav.ensure_home()
                     continue
@@ -1299,10 +1302,10 @@ class Challenge:
                                 self.profile.duration_seconds)
                 self.data['yield_health'] = health
                 if ((points-self.data['before_sp'] < 21 or health['degraded']) and points < 999):
-                    nav.invalidate_farm_video()
+                    nav.invalidate_farm_settings()
                     self.emit('log', f'Low farm yield: {points-self.data["before_sp"]} SP; '
                               f'recent full-run median {health.get("expected_sp", "unavailable")}. '
-                              'Rechecking the frame-rate cap before the next challenge; cause not established.')
+                              'Rechecking farm difficulty, Skills HUD and frame rate before the next challenge; cause not established.')
                 policy=self.data.get('refill_plan',{})
                 if self.data.get('exit_reason')=='intentional_target_top_up':
                     from .analytics import save

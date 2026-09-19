@@ -44,22 +44,34 @@ def _digits_from_document(doc):
 
 
 def speed_from_frame(reader, frame):
-    """Read the low-contrast native speed digits with two agreeing masks.
+    """Read actual speed from independently rendered native HUD views.
 
-    Windows OCR cannot normally see Forza's translucent speedometer. Two
-    nearby binary thresholds make it legible while requiring independent
-    agreement before the value can contribute to a stationary-run exit.
+    The unscaled 200/210 masks missed visible 48–55 km/h digits in live
+    captures. Upscaling the numeric region makes Windows OCR usable without
+    including the gear or tachometer. Conflicting reads remain unknown.
     """
     if frame is None or getattr(frame, 'shape', (0, 0))[:2] != (1080, 1920):
         return None
-    x, y, w, h = SPEED_DIGITS
-    gray = cv2.cvtColor(frame[y:y+h, x:x+w], cv2.COLOR_BGR2GRAY)
-    values = []
-    for threshold in (200, 210):
-        _, mask = cv2.threshold(gray, threshold, 255, cv2.THRESH_BINARY)
-        values.append(_digits_from_document(reader.read(
-            cv2.cvtColor(mask, cv2.COLOR_GRAY2BGR))))
-    return values[0] if values[0] is not None and values[0] == values[1] else None
+    for x, y, w, h in ((1720, 940, 165, 115), SPEED_DIGITS):
+        gray = cv2.cvtColor(frame[y:y+h, x:x+w], cv2.COLOR_BGR2GRAY)
+        views = (gray, *(cv2.threshold(gray, level, 255, cv2.THRESH_BINARY)[1]
+                         for level in (180, 220)))
+        values = []
+        for view in views:
+            enlarged = cv2.resize(view, None, fx=3, fy=3, interpolation=cv2.INTER_CUBIC)
+            value = _digits_from_document(reader.read(
+                cv2.cvtColor(enlarged, cv2.COLOR_GRAY2BGR)))
+            if value is not None:
+                values.append(value)
+        if len(values) >= 2:
+            return values[0] if len(set(values)) == 1 else None
+    return None
+
+
+def motion_evidence(speed, visual_motion):
+    """A measured zero overrides scenery motion from animated props."""
+    return speed if speed is not None else (1 if visual_motion is True else
+                                           0 if visual_motion is False else None)
 
 
 def scene_is_moving(previous, current):
@@ -91,7 +103,7 @@ class StationaryWatch:
         self.samples = 0
 
     def observe(self, speed, elapsed, now):
-        if (speed != 0 or elapsed < 45 or self.last is not None and
+        if (speed is None or speed > 5 or elapsed < 45 or self.last is not None and
                 (now <= self.last or now-self.last > 12)):
             self.since = self.last = None
             self.samples = 0

@@ -33,6 +33,14 @@ class FarmSetupChecks:
             data['video_identity'] = None
             self.save(data)
 
+    def invalidate_full(self):
+        """Require a fresh difficulty, Skills HUD, and video check after lost yield."""
+        data = self.read()
+        if data.get('run_id') == self.run_id:
+            data['difficulty_policy'] = None
+            data['video_identity'] = None
+            self.save(data)
+
     def reusable(self, profile):
         data=self.read()
         return (data.get('run_id')==self.run_id and data.get('profile')==asdict(profile)
