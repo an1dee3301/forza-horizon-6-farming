@@ -16,6 +16,6 @@ The normal controller resumed after the 2,000 inventory gate. It verified 51 ava
 
 Fresh-SP farming has since produced two additional saved Super Wheelspins: native inventory advanced from 2,002 to 2,004, confirmed at 09:22:05 UTC. The verifier is still collecting (two trailing saved spins; no qualifying windows yet).
 
-The next completed farm drive verified 14 spendable SP at 08:42:52 UTC; the normal controller returned to farm preparation without starting another conversion batch. Saved-spin balance remains 2,003 pending a later native inventory check.
+Another completed farm drive verified 14 spendable SP at 08:42:52 UTC; the normal controller returned to farm preparation without starting another conversion batch. Native inventory later advanced to 2,004.
 
 **33 saved Super Wheelspins/hour is not established.** The verifier requires two adjacent complete farm, conversion, and cleanup windows with at least 100 newly saved spins each. Downtime is included. Existing SP conversion does not establish sustained farming throughput.
