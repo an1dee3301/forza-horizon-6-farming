@@ -16,6 +16,6 @@ The normal controller resumed after the 2,000 inventory gate. It verified 51 ava
 
 Fresh-SP farming later advanced native inventory from 2,002 to 2,004 at 09:22:05 UTC. A subsequent fresh native observation at 10:06:52 UTC confirmed 2,005 saved Super Wheelspins, three above baseline. This is a cumulative balance check; it does not establish a sustained rate window.
 
-Farm drives and one further SP conversion continued between inventory checks. The latest durable goal shows five completed rewards and the last completed farm drive yielded 16 SP. These event counts are not substituted for native saved-SW balance evidence.
+Farm drives and further SP conversions continued between inventory checks. The latest durable goal records six completed rewards and a farm-run counter of 13; the latest SP check was 7. A bounded first-gear trial was attempted on the same 22B and route, but the challenge had already launched once with the normal upshift before the trial was claimed. The retry then exited early and the combined challenge record gained only 1 SP, so this is not a clean first-gear comparison and is not used as a rate sample. The standard farm run has resumed. These event counts are not substituted for native saved-SW balance evidence.
 
 **33 saved Super Wheelspins/hour is not established.** The verifier requires two adjacent complete farm, conversion, and cleanup windows with at least 100 newly saved spins each. Downtime is included. Existing SP conversion does not establish sustained farming throughput.
