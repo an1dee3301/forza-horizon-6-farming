@@ -12,6 +12,6 @@ Account identifiers, local paths, screenshots, save data, raw OCR, and free-form
 
 ## Farming and rate verification
 
-The normal controller resumed after the 2,000 inventory gate. It verified 51 available SP and confirmed one conversion-car purchase. No new reward has yet been verified. Garage sorting currently blocks selecting that purchased car; its durable checkpoint remains intact.
+The normal controller resumed after the 2,000 inventory gate. It verified 51 available SP, completed the first conversion with one verified new Super Wheelspin reward, and confirmed the second conversion-car purchase. Menu timing and sorting fixes allowed the pending purchased car to complete. The controller is continuing the second conversion; these initial rewards use inherited SP.
 
 **33 saved Super Wheelspins/hour is not established.** The verifier requires two adjacent complete farm, conversion, and cleanup windows with at least 100 newly saved spins each. Downtime is included. Existing SP conversion does not establish sustained farming throughput.
