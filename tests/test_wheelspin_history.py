@@ -104,6 +104,21 @@ def test_destructive_interlock_blocks_abbreviated_keep_alias_even_if_flag_is_wro
         store.assert_action_allowed(spin, car["reward_id"], "SELL", "M-B CLK-GTR")
 
 
+@pytest.mark.parametrize("name", [
+    "1998 SUBARU IMPREZA 22B-STI VERSION", "SUBARU 22B", "IMPREZA 22B", "22B",
+])
+def test_destructive_interlock_blocks_both_subaru_22b_copies_by_alias(tmp_path, name):
+    store = WheelspinStore(tmp_path / "lab.sqlite")
+    session = store.start_session(1, "SUPER", False, True)
+    spin = store.start_spin(session, 1, "SUPER")
+    store.commit_rewards(spin, [reward(1, "CAR", raw_ocr=name,
+        duplicate=True, retain=True, decision_confidence=1.0), reward(2), reward(3)])
+    car = store.rewards(spin)[0]
+    store.plan_decision(spin, car["reward_id"], "KEEP", 1.0)
+    with pytest.raises(AssertionError, match="protected"):
+        store.assert_action_allowed(spin, car["reward_id"], "SELL", name)
+
+
 def test_destructive_interlock_blocks_lamborghini_even_when_flash_hides_gold(tmp_path):
     store = WheelspinStore(tmp_path / "lab.sqlite")
     session = store.start_session(1, "SUPER", False, True)

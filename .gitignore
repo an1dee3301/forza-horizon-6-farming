@@ -1,12 +1,15 @@
 __pycache__/
 *.py[cod]
 .venv/
+.release-venv/
+.release-venv2/
 .analysis_deps/
 .pytest_cache/
 runs/
 failures/
 purchases/
 LocalState/
+dist/
 *.log
 *.tmp
 discord_webhook.dpapi

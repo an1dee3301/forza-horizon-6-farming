@@ -1,8 +1,8 @@
 """Wheelspin-exclusive catalog and independent user retention policy.
 
 Catalog matches are deliberately exact: year, manufacturer and model must all
-be present. Catalog membership never grants retention; six named targets and
-any Lamborghini are the only KEEP rules.
+be present. Catalog membership never grants retention; seven named targets and
+any Lamborghini are the KEEP rules.
 """
 from dataclasses import dataclass
 import re
@@ -30,6 +30,10 @@ NAMED_KEEP_ALIASES = {
     "NEVERA": ("RIMAC NEVERA", "NEVERA"),
     "APOLLO IE": ("APOLLO INTENSA EMOZIONE", "APOLLO IE", "INTENSA EMOZIONE"),
     "599XX EVOLUTION": ("FERRARI 599XX EVOLUTION", "599XX EVOLUTION", "599XX EVO"),
+    # Keep both owned copies of the Subaru 22B. Native duplicate dialogs can
+    # shorten this distinctive model to just "22B".
+    "SUBARU 22B": ("SUBARU IMPREZA 22B", "SUBARU 22B", "IMPREZA 22B",
+                    "22B STI", "22B"),
 }
 
 # Native duplicate dialogs often omit the maker. Treat known Lamborghini
@@ -91,7 +95,7 @@ def lamborghini_model_name(value):
 
 
 def retain_match(value):
-    """User policy only: six named cars or any identifiable Lamborghini."""
+    """User policy only: seven named targets or any identifiable Lamborghini."""
     return user_keep_match(value) or lamborghini_candidate(value)
 
 

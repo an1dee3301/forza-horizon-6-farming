@@ -42,7 +42,8 @@ def test_focus_loss_and_f7_prevent_input():
 @pytest.mark.parametrize("name", [
     "M-B CLK-GTR", "Mercedes-Benz AMG CLK GTR", "Koenigsegg One:1",
     "Hennessey Venom GT", "Rimac Nevera", "Apollo IE",
-    "Ferrari 599XX Evo", "Lamborghini Sian",
+    "Ferrari 599XX Evo", "Lamborghini Sian", "1998 Subaru Impreza 22B-STi Version",
+    "Subaru 22B", "Impreza 22B", "22B STI", "22B",
 ])
 def test_every_user_keep_alias_fails_closed_to_keep(name):
     assert protected_keep_match(name)
@@ -59,6 +60,7 @@ def test_unlisted_car_does_not_match_keep_aliases():
     "NEVERA", "Apollo IE", "Intensa Emozione", "Ferrari 599XX Evolution",
     "599XX Evo", "Sesto Elemento", "Centenario", "Murcielago",
     "Huracan Tecnica", "Essenza SCV12", "Countach", "Aventador",
+    "Subaru Impreza 22B-STi Version",
     "Diablo GTR", "2027 LAMBORGHINI Unknown Model Forza Edition",
 ])
 def test_only_user_keep_targets_are_kept(name):
@@ -73,6 +75,11 @@ def test_only_user_keep_targets_are_kept(name):
 def test_other_cars_are_sell_policy_with_positive_maker_evidence(name):
     assert not retain_match(name)
     assert non_lamborghini_make_confirmed(name)
+
+
+def test_unrelated_subarus_are_not_protected_but_22b_is():
+    assert not retain_match("2015 Subaru WRX STI")
+    assert non_lamborghini_make_confirmed("2015 Subaru WRX STI")
 
 
 @pytest.mark.parametrize("name", [

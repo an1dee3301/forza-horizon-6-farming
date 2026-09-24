@@ -7,7 +7,7 @@ Windows automation for the Forza Horizon 6 Super Wheelspin loop: farm Skill Poin
 ### Requirements
 
 - Windows 10 or 11
-- Python 3.10 or newer
+- Python 3.12 (the tested release runtime)
 - AutoHotkey v2
 - Forza Horizon 6 through Steam
 - English game menus at 1920×1080
@@ -17,7 +17,7 @@ Windows automation for the Forza Horizon 6 Super Wheelspin loop: farm Skill Poin
 ### Install
 
 1. Download and extract the latest release.
-2. Run `Setup FH6 Auto.cmd` once. It creates a private Python environment, installs the required packages, and opens the dashboard.
+2. Install AutoHotkey v2, then run `Setup FH6 Auto.cmd` once. It creates a private Python 3.12 environment, installs the release's pinned Windows dependencies, verifies imports, and opens the dashboard.
 3. For later runs, use `Start FH6 Auto.cmd`.
 
 For development installs, clone the repository and run the same setup file. Tests require `requirements-dev.txt` and run with `python -m pytest`.
@@ -145,4 +145,4 @@ The [500-Super-Wheelspin operation report](docs/WHEELSPIN-OPERATION-2026-09-19.m
 | Wall time / throughput | 2.63h / 189.91 spins/h |
 | Spin duration P50 / P90 | 7.02s / 8.71s |
 
-Five protected cars were sold in error during this run, including four Lamborghinis. The kept-car count must not be read as successful enforcement of the retention policy. The corrected policy keeps **CLK GTR, One:1, Venom GT, Nevera, Apollo IE, 599XX Evolution, and every Lamborghini**; the 45-car Wheelspin-exclusive catalog is for statistics only. Automatic Wheelspin Lab actions are disabled locally pending fresh live safety validation. The [full report](docs/WHEELSPIN-OPERATION-2026-09-19.md) includes the audited incidents, car pulls, recovery data, and [machine-readable results](docs/data/wheelspin-operation-20260919/summary.json).
+Five protected cars were sold in error during this run, including four Lamborghinis. The kept-car count must not be read as successful enforcement of the retention policy. The corrected policy keeps **CLK GTR, One:1, Venom GT, Nevera, Apollo IE, 599XX Evolution, both Subaru Impreza 22B-STi copies, and every Lamborghini**; the 45-car Wheelspin-exclusive catalog is for statistics only. Automatic Wheelspin Lab actions are disabled locally pending fresh live safety validation. The [full report](docs/WHEELSPIN-OPERATION-2026-09-19.md) includes the audited incidents, car pulls, recovery data, and [machine-readable results](docs/data/wheelspin-operation-20260919/summary.json).

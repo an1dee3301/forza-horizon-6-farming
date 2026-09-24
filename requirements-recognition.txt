@@ -1,4 +1,4 @@
-opencv-python-headless>=4.8,<6
+opencv-python>=4.8,<6
 numpy>=1.26,<3
 mss>=9,<11
 keyboard==0.13.5
