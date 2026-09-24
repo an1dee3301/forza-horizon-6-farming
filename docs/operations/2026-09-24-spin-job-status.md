@@ -18,4 +18,6 @@ Fresh-SP farming has since produced two additional saved Super Wheelspins: nativ
 
 Another completed farm drive verified 14 spendable SP at 08:42:52 UTC; the normal controller returned to farm preparation without starting another conversion batch. Native inventory later advanced to 2,004.
 
+One further SP conversion completed a verified purchase and reward collection, bringing conversion rewards to five. Available SP afterward was 4. No newer native saved-SW inventory count has been recorded yet, so this reward is not counted as an additional saved spin.
+
 **33 saved Super Wheelspins/hour is not established.** The verifier requires two adjacent complete farm, conversion, and cleanup windows with at least 100 newly saved spins each. Downtime is included. Existing SP conversion does not establish sustained farming throughput.
