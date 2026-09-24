@@ -424,14 +424,16 @@ class GameLifecycle:
             foreground = core.foreground_title().casefold()
             if nav.title.casefold() not in foreground:
                 ready_screen, ready_count = None, 0
-                # Priority only reactivates the FH6 window; authentication and
-                # other modal dialogs are never dismissed or typed into.
-                if self.priority and foreground != 'gaming ui':
-                    self.game.activate()
                 if not waiting_focus:
                     self.emit('status', 'Waiting for game focus during startup — F7 cancels. Sign-in prompts need your input.')
                     waiting_focus = True
+                # Steam/Xbox sign-in and other foreground overlays can need
+                # user input. Do not steal focus repeatedly; pause the startup
+                # deadline while the game is covered, while continuing to
+                # watch the process and crash state above.
+                focus_wait_started = self.clock()
                 self.pause(.5)
+                deadline += max(0, self.clock()-focus_wait_started)
                 continue
             waiting_focus = False
             obs = nav.observe()
