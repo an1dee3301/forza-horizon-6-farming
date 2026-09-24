@@ -14,10 +14,8 @@ Account identifiers, local paths, screenshots, save data, raw OCR, and free-form
 
 The normal controller resumed after the 2,000 inventory gate. It verified 51 available SP, completed both inherited-SP conversions with two verified new Super Wheelspin rewards. Native inventory then confirmed 2,002 on two fresh frames at 06:33:42 UTC. The rate verifier accepted this post-inherited-SP baseline and is collecting evidence for fresh-SP farming. No qualifying rate windows exist yet.
 
-Fresh-SP farming has since produced two additional saved Super Wheelspins: native inventory advanced from 2,002 to 2,004, confirmed at 09:22:05 UTC. The verifier is still collecting (two trailing saved spins; no qualifying windows yet).
+Fresh-SP farming later advanced native inventory from 2,002 to 2,004 at 09:22:05 UTC. A subsequent fresh native observation at 10:06:52 UTC confirmed 2,005 saved Super Wheelspins, three above baseline. This is a cumulative balance check; it does not establish a sustained rate window.
 
-Another completed farm drive verified 14 spendable SP at 08:42:52 UTC; the normal controller returned to farm preparation without starting another conversion batch. Native inventory later advanced to 2,004.
-
-One further SP conversion completed a verified purchase and reward collection, bringing conversion rewards to five. Available SP afterward was 4. No newer native saved-SW inventory count has been recorded yet, so this reward is not counted as an additional saved spin.
+Farm drives and one further SP conversion continued between inventory checks. The latest durable goal shows five completed rewards and the last completed farm drive yielded 16 SP. These event counts are not substituted for native saved-SW balance evidence.
 
 **33 saved Super Wheelspins/hour is not established.** The verifier requires two adjacent complete farm, conversion, and cleanup windows with at least 100 newly saved spins each. Downtime is included. Existing SP conversion does not establish sustained farming throughput.
