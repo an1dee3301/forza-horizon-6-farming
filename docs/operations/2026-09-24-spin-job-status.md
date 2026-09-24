@@ -1,20 +1,17 @@
-# Spin job status — 2026-09-24
+# Spin results and farming status — 2026-09-24
 
-This is a sanitized checkpoint summary. It contains no account identifier, screenshots, save files, or raw run logs.
+## Completed spin target
 
-## Checkpoint
+The latest session completed 271 Super Wheelspins and recorded 813 reward slots. Native balance reached exactly 2,000, confirmed on two fresh frames and again through My Horizon inventory verification. All final prizes were collected before completion. Historical unfinished checkpoints remain preserved.
 
-- Spin session requested 554 Super Wheelspins.
-- 33 spins are durably marked complete in the local session ledger.
-- Spin 34 has a recorded reward and a `COLLECT_SENT` checkpoint; its collection is unresolved because FH6 crashed.
-- The last native inventory observation before the crash showed 2,546 Super Wheelspins. The current count needs a fresh in-game read after recovery.
-- The requested stop point of 2,000 has not been reached, and the farming job has not restarted.
-- The worker was safely stopped after startup recovery encountered a second crash dialog and timed out.
+## Complete sanitized ledger export
 
-## Recovery needed
+[Data and manifest](../../data/spins/2026-09-24/manifest.json): 4 sessions, 975 spins, 2,925 reward records, and 19,447 events. CSV tables include every row from a consistent canonical-ledger snapshot. Session and spin identifiers are replaced with public sequence identifiers.
 
-Recover FH6 and complete cloud sync, then verify the native Super Wheelspin count. Reconcile spin 34 from the game UI before resuming the saved session. Continue spinning to 2,000, then restart the saved-wheelspin farming job. The count and session ledger must be checked again after recovery because the prior native observation predates the crash.
+Account identifiers, local paths, screenshots, save data, raw OCR, and free-form event/error text are excluded. The manifest documents limitations. Recorded sell values contain known OCR errors and are not validated prices. Unresolved rows remain unresolved.
 
-## Measurement
+## Farming and rate verification
 
-This checkpoint does not establish a saved Super Wheelspin-per-hour rate. A reliable rate still requires two adjacent complete farm, conversion, and cleanup windows with at least 100 new spins each.
+The normal controller resumed after the 2,000 inventory gate. It verified 51 available SP and confirmed one conversion-car purchase. No new reward has yet been verified. Garage sorting currently blocks selecting that purchased car; its durable checkpoint remains intact.
+
+**33 saved Super Wheelspins/hour is not established.** The verifier requires two adjacent complete farm, conversion, and cleanup windows with at least 100 newly saved spins each. Downtime is included. Existing SP conversion does not establish sustained farming throughput.

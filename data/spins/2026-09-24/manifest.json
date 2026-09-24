@@ -1,0 +1,26 @@
+{
+  "export_date": "2026-09-24",
+  "row_counts": {
+    "sessions": 4,
+    "spins": 975,
+    "rewards": 2925,
+    "events": 19447
+  },
+  "source": "Canonical operational spin ledger, consistent read-only snapshot; all sessions and rows included.",
+  "exclusions": [
+    "Account identifiers",
+    "Local file paths",
+    "Screenshots",
+    "Save data",
+    "Raw OCR",
+    "Free-form errors and event text",
+    "Historical backup databases"
+  ],
+  "caveats": [
+    "Values are recorded observations, not independently corrected market values.",
+    "Unresolved checkpoints and historical policies are preserved.",
+    "action_verified must be checked before counting a sale or keep.",
+    "Native fallback keep events may not be represented as verified keep reward rows.",
+    "Historical sell values include known OCR errors; do not total unvalidated values."
+  ]
+}
