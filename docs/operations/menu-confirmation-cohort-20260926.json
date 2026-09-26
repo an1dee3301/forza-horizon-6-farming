@@ -1,0 +1,19 @@
+{
+  "scope": "Completed conversion cohort; not saved-spin/hour qualification",
+  "cars_completed": 33,
+  "conversion_wall_seconds_including_recovery": 2012.0,
+  "median_active_cycle_seconds": 53.718,
+  "failed_attempts": 3,
+  "previous_comparison_median_seconds": 53.797,
+  "comparison_limitations": [
+    "Sequential cohorts, not randomized or matched conditions.",
+    "Active cycle median excludes stopped-worker time; full conversion wall time includes it.",
+    "Farm time and deferred final cleanup are outside this conversion cohort.",
+    "No adjacent native-inventory qualification."
+  ],
+  "trial": "Additional focus-based confirmation at Get In Car and Upgrades & Tuning in the live investigation; not yet promoted to the public default.",
+  "outcome": "No meaningful overall cycle-speed improvement established.",
+  "cleanup_policy": "final_only",
+  "cleanup_completed_for_cohort": false,
+  "native_saved_rate_qualified": false
+}
