@@ -722,6 +722,25 @@ class LocalPanel {
         this.RefreshPlan()
         if !InStr(this.plan.Value, "50 Super Wheelspins") || !InStr(this.plan.Value, "1050 SP")
             throw Error("Wheelspin target preview failed")
+        this.creditFloor.Value := ""
+        this.cleanupPolicy.Choose(1)
+        if this.CreditPolicyArgs() != ""
+            throw Error("Blank reserve must preserve saved policy")
+        this.creditFloor.Value := "1234567"
+        this.cleanupPolicy.Choose(2)
+        policyArgs := this.CreditPolicyArgs()
+        if !InStr(policyArgs, "--credit-floor") || !InStr(policyArgs, "1234567") || !InStr(policyArgs, "--cleanup-policy final_only")
+            throw Error("Explicit reserve/cleanup arguments missing")
+        this.mode.Choose("Full pipeline")
+        if this.CreditPolicyArgs() != ""
+            throw Error("Credit policy leaked into another mode")
+        this.mode.Choose("Earn saved Super Wheelspins")
+        this.SetBusy(true)
+        if this.creditFloor.Enabled || this.cleanupPolicy.Enabled
+            throw Error("Running reserve controls must be locked")
+        this.SetBusy(false)
+        if !this.creditFloor.Enabled || !this.cleanupPolicy.Enabled
+            throw Error("Idle reserve controls must be editable")
         this.pid := 1
         this.action := "run"
         this.Apply(Map("phase", "farm_drive", "stage", "Farming"))
