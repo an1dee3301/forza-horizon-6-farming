@@ -1149,12 +1149,21 @@ class Navigator:
                       predicate=recent_sort_verified)
             self.garage_recent_sort_verified = True
         grid = obs.screen
+        jump_started = time.monotonic()
+        if self.fast_navigation:
+            from .recent_jump import try_one_up
+            first = try_one_up(self, obs)
+            if first is not None:
+                self.emit('log', f'Recent Jump route: one_up verified in {time.monotonic()-jump_started:.3f}s; normal fresh-car entry follows.')
+                self.enter_fresh_car(first)
+                return
         self.key('backspace')
         self.pause(.04 if self.fast_navigation else .5)
         obs = self.wait({grid, 'recent_jump'})
         if obs.screen == 'recent_jump':
             self.click_label('recent_jump', 'All Cars', (250, 250, 1410, 650))
             obs = self.wait(grid, previous='recent_jump')
+        self.emit('log', f'Recent Jump route: normal_jump ready in {time.monotonic()-jump_started:.3f}s, including any one-Up fallback.')
         self.enter_fresh_car(obs)
 
     def selected_car_observation(self, obs, require_new=True):

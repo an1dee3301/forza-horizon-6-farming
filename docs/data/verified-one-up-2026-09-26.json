@@ -1,0 +1,21 @@
+{
+  "date": "2026-09-26",
+  "candidate": "verified_one_up",
+  "status": "two_live_selections_and_rewards_completed",
+  "trials": [
+    {
+      "cycle": 7,
+      "selection_seconds": 0.48,
+      "full_cycle_active_seconds": 65.03100000001723
+    },
+    {
+      "cycle": 8,
+      "full_cycle_active_seconds": 57.21899999998277,
+      "selection_seconds": 0.641
+    }
+  ],
+  "baseline_selection_seconds": 2.098,
+  "scope": "Local garage-selection segment only. Full cycles vary with loading; no sustained saved-SW rate claim. All stop/probe/restart wall time remains included in native rate windows.",
+  "deployment": "Conditional fast-navigation shortcut deployed at a confirmed paid-car checkpoint; first production selection verified in 0.437 seconds.",
+  "first_production_selection_seconds": 0.437
+}
