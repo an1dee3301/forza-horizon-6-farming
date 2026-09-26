@@ -5,6 +5,8 @@ class LocalPanel {
         this.pid := 0
         this.watchdog := MissionWatchdog()
         this.channel := ""
+        this.action := ""
+        this.lastPhase := ""
         this.pending := false
         this.goalPending := false
         this.editingProfile := false
@@ -57,7 +59,7 @@ class LocalPanel {
         this.gui.SetFont("s9 c00D7B3 Bold", "Bahnschrift")
         this.gui.AddText("x26 y72 w220 h20", "FH6 // OPERATIONS")
         this.gui.SetFont("s9 cA3B1B8", "Bahnschrift")
-        this.gui.AddText("x250 y72 w474 h20 Right", "MAD MIKE 808  •  21 SP  •  95,000 CR  •  SYNC FIRST")
+        this.gui.AddText("x250 y72 w474 h20 Right", "SAVED SW MISSION  •  21 SP / CAR  •  F6 RUN  •  F7 STOP")
         this.gui.AddProgress("x24 y99 w700 h3 cC8FF00 Background18232B Range0-1", 1)
         this.tabs := this.gui.AddTab3("x24 y108 w700 h435 +Buttons Background101820 cF7FAFC", ["MISSION  任務", "LIVE  稼働", "RECOVERY  復旧", "HISTORY  履歴", "MODULES  機能", "DATA  分析"])
         this.tabs.UseTab(1)
@@ -87,8 +89,20 @@ class LocalPanel {
         this.gui.AddText("x322 y468 w150", "Screen timeout (sec)")
         this.timeout := this.gui.AddEdit("x489 y461 w75 h30 Number Border Background111B23 cFFFFFF", "30")
         this.tabs.UseTab(2)
-        this.gui.SetFont("s12 cF4FBFB")
-        this.stats := this.gui.AddText("x46 y164 w650 h196", "No run started.")
+        ; Keep the main production counters visible while the detailed report scrolls.
+        this.liveLabels := []
+        this.liveValues := []
+        for index, name in ["MISSION NEW", "CARS PROCESSED", "GARAGE LEFT", "FARM RUNS"] {
+            x := 46 + (index - 1) * 165
+            this.gui.AddText("x" x " y157 w155 h68 Background101820", "")
+            this.gui.AddProgress("x" x " y157 w155 h3 c00C7A3 Background00C7A3 Range0-1", 1)
+            this.gui.SetFont("s8 c8FA0AA Bold", "Bahnschrift")
+            this.liveLabels.Push(this.gui.AddText("x" (x + 10) " y168 w137 h17 BackgroundTrans", name))
+            this.gui.SetFont("s19 cF7FAFC Bold", "Bahnschrift SemiCondensed")
+            this.liveValues.Push(this.gui.AddText("x" (x + 10) " y184 w137 h32 BackgroundTrans", "—"))
+        }
+        this.gui.SetFont("s9 cF4FBFB", "Consolas")
+        this.stats := this.gui.AddEdit("x46 y236 w650 h124 ReadOnly Multi VScroll Border Background0C131A cF4FBFB", "No run started.")
         this.bar := this.gui.AddProgress("x46 y374 w650 h12 cC8FF00 Background18232B Range0-100", 0)
         this.gui.SetFont("s11 cC8FF00")
         this.stage := this.gui.AddText("x46 y410 w650 h48 +0x80", "Waiting")
@@ -142,10 +156,13 @@ class LocalPanel {
         this.gui.SetFont("s11 c070B10 Bold", "Bahnschrift")
         this.startButton := this.AddButton("x24 y562 w458 h43", "F6   START / RESUME   運行開始", ObjBindMethod(this, "Start"))
         this.stopButton := this.AddButton("x498 y562 w226 h43", "F7   STOP   停止", ObjBindMethod(this, "Stop"))
+        this.gui.AddText("x24 y615 w700 h70 Background101820", "")
+        this.gui.SetFont("s9 c070B10 Bold", "Bahnschrift")
+        this.runState := this.gui.AddText("x35 y626 w104 h24 Center +0x200 BackgroundC8FF00", "READY")
         this.gui.SetFont("s10 cF4FBFB", "Bahnschrift")
-        this.status := this.gui.AddText("x26 y622 w698 h57", "Loading saved progress…")
+        this.status := this.gui.AddText("x151 y621 w560 h61 BackgroundTrans", "Loading saved progress…")
         this.gui.SetFont("s9 c83A8B0")
-        this.gui.AddText("x26 y687 w700 h22", "東京  JST   //   SYNC FIRST  同期優先   //   F6 RUN   F7 STOP")
+        this.gui.AddText("x26 y691 w700 h22", "東京  JST   //   F6 START OR RESUME   //   F7 REQUEST STOP")
         corners := Buffer(4, 0)
         NumPut("Int", 1, corners)
         try DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", this.gui.Hwnd, "UInt", 33, "Ptr", corners, "UInt", 4)
@@ -336,6 +353,14 @@ class LocalPanel {
     }
 
     SetBusy(busy) {
+        if busy
+            this.runState.Value := this.action = "run" ? "RUNNING" : "CHECKING"
+        else if this.action = "run" && this.channel != "" && FileExist(this.channel "\stop")
+            this.runState.Value := "STOPPED"
+        else if this.lastPhase = "complete"
+            this.runState.Value := "COMPLETE"
+        else
+            this.runState.Value := "READY"
         this.startButton.Enabled := !busy
         this.endButton.Enabled := !busy
         this.resolveButton.Enabled := !busy
@@ -349,6 +374,7 @@ class LocalPanel {
     Poll(*) {
         if !this.pid {
             if FileExist(this.workspace "\runs\cloud_sync.json") {
+                this.runState.Value := "SYNC WAIT"
                 this.stage.Value := "Waiting for full cloud sync"
                 this.status.Value := "SYNC WAIT // Watching for full completion. All game actions and restarts are paused."
             }
@@ -390,6 +416,7 @@ class LocalPanel {
             }
             if this.action = "run" && this.watchdog.Schedule(A_TickCount) {
                 this.SetBusy(true)
+                this.runState.Value := "RECOVERING"
                 this.status.Value := "Worker exited. Resuming the same saved mission shortly. F7 cancels."
             } else if this.action = "run"
                 this.gui.Show()
@@ -399,13 +426,28 @@ class LocalPanel {
     Apply(values) {
         this.watchdog.Observe(values)
         get(key, fallback := "—") => values.Get(key, fallback)
+        this.lastPhase := get("phase", "")
         this.pending := get("pending", "0") = "1"
         this.goalPending := get("goal_pending", "0") = "1"
         this.shareCode := get("share_code", this.shareCode)
         this.challengeSeconds := get("challenge_seconds", this.challengeSeconds)
         this.status.Value := get("message", "Waiting…")
         this.stage.Value := get("stage", "Waiting")
+        if this.pid {
+            if this.channel != "" && FileExist(this.channel "\stop")
+                this.runState.Value := "STOPPING"
+            else if this.stage.Value = "Waiting for full cloud sync" || this.lastPhase = "sync_wait"
+                this.runState.Value := "SYNC WAIT"
+            else if this.lastPhase = "complete"
+                this.runState.Value := "COMPLETE"
+            else
+                this.runState.Value := this.action = "run" ? "RUNNING" : "CHECKING"
+        }
         if get("run_mode", "") = "Wheelspin Lab" {
+            for index, label in ["SUPER SPINS", "REWARD SLOTS", "CAR REWARDS", "CARS KEPT"]
+                this.liveLabels[index].Value := label
+            for index, value in [get("lab_super_spins", "0"), get("lab_reward_slots", "0"), get("lab_car_rewards", "0"), get("lab_retained", "0")]
+                this.liveValues[index].Value := value
             this.stats.Value := "WHEELSPIN LAB  " get("completed", "0") " / " get("limit", "—")
                 . "    REMAINING  " get("remaining", "—")
                 . "`n`nSUPER " get("lab_super_spins", "0") "    REGULAR " get("lab_regular_spins", "0")
@@ -416,6 +458,10 @@ class LocalPanel {
                 . "`n`nEVERY REWARD COMMITTED BEFORE PROCESSING"
                 . "`nACTIVE " get("elapsed") "    " get("window_left")
         } else {
+            for index, label in ["MISSION NEW", "CARS PROCESSED", "GARAGE LEFT", "FARM RUNS"]
+                this.liveLabels[index].Value := label
+            for index, value in [get("rewards", "0"), get("mad_mike_processed", get("rewards", "0")), get("mad_mike_left_prefix", "≤") get("mad_mike_left", get("bought", "0")), get("farm_runs", "0")]
+                this.liveValues[index].Value := value
             this.stats.Value := "PROGRESS  " get("completed", "0") " / " get("limit", "—")
             . "    REMAINING  " get("remaining", "—")
             . "`n`n" get("inventory_line", "SAVED SW / WS: awaiting live game read")
@@ -489,6 +535,7 @@ class LocalPanel {
         this.watchdog.Stop()
         if this.pid && this.channel != "" {
             try FileAppend("stop", this.channel "\stop", "UTF-8")
+            this.runState.Value := "STOPPING"
             this.status.Value := "Stop requested; waiting for input release…"
         } else if !this.closing {
             this.SetBusy(false)
@@ -620,9 +667,11 @@ class LocalPanel {
         if this.pid
             throw Error("Invalid budget launched a worker")
         this.action := "inspect"
-        this.Apply(Map("pending", "1", "completed", "5", "limit", "25", "remaining", "20", "input_sp", "532", "stage", "Open mastery", "saved_mode", "Full pipeline"))
+        this.Apply(Map("pending", "1", "completed", "5", "limit", "25", "remaining", "20", "input_sp", "532", "stage", "Open mastery", "saved_mode", "Full pipeline", "rewards", "3", "mad_mike_processed", "2", "mad_mike_left", "1", "farm_runs", "4"))
         if !this.pending || !InStr(this.stats.Value, "5 / 25")
             throw Error("Saved checkpoint display failed")
+        if this.liveValues[1].Value != "3" || this.liveValues[2].Value != "2" || this.liveValues[4].Value != "4"
+            throw Error("Live mission cards do not match saved progress")
         this.SetBusy(false)
         if this.points.Enabled
             throw Error("Saved budget must be locked")
@@ -633,6 +682,19 @@ class LocalPanel {
         this.RefreshPlan()
         if !InStr(this.plan.Value, "50 Super Wheelspins") || !InStr(this.plan.Value, "1050 SP")
             throw Error("Wheelspin target preview failed")
+        this.pid := 1
+        this.action := "run"
+        this.Apply(Map("phase", "farm_drive", "stage", "Farming"))
+        if this.runState.Value != "RUNNING"
+            throw Error("Live worker badge did not show running")
+        this.Apply(Map("phase", "sync_wait", "stage", "Waiting for full cloud sync"))
+        if this.runState.Value != "SYNC WAIT"
+            throw Error("Cloud sync badge did not show waiting")
+        this.Apply(Map("phase", "complete", "stage", "Complete"))
+        this.pid := 0
+        this.SetBusy(false)
+        if this.runState.Value != "COMPLETE"
+            throw Error("Finished worker badge did not show complete")
         FileAppend("AHK panel checks passed. No game inputs sent.`n", "*")
         this.gui.Destroy()
         ExitApp(0)

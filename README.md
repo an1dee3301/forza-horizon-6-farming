@@ -82,6 +82,8 @@ Add a webhook in the dashboard to receive the live mission board and current gam
 
 Private gameplay captures, `runs/`, `failures/`, `purchases/`, `LocalState/`, virtual environments, process identifiers, and Discord credentials stay outside Git.
 
+The [September 26 speed investigation](docs/operations/2026-09-26-speed-investigation.md) and its [aggregate timing data](data/2026-09-26-speed-baseline.json) record the current bottlenecks, rejected shortcuts, and measurement needed before claiming 33 saved Super Wheelspins/hour.
+
 ## 2. Three-phase highlights
 
 The operation contains three measured cohorts. The README keeps only the comparison; the [complete all-phase report](docs/full-operation-report/REPORT.md) contains the full timing, farming, finance, reliability, inventory, cleanup, methods, and evidence detail.

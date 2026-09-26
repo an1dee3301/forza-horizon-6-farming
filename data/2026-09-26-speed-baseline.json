@@ -1,0 +1,18 @@
+{
+  "date": "2026-09-26",
+  "units": "seconds",
+  "scope": "de-identified aggregate production timings",
+  "conversion_batches": [
+    {"label": "A", "cycles": 35, "cycle_median": 60.56, "cycle_mean": 63.97, "choose_median": 28.98},
+    {"label": "B", "cycles": 33, "cycle_median": 61.39, "cycle_mean": 62.75, "choose_median": 29.05},
+    {"label": "C", "cycles": 33, "cycle_median": 62.22, "cycle_mean": 65.05, "choose_median": 29.34}
+  ],
+  "farm_sample": {
+    "runs": 2,
+    "sp_gained": 702,
+    "active_seconds": 2052.515,
+    "sp_per_car": 21
+  },
+  "saved_sw_rate_verified": false,
+  "qualification": "Two adjacent windows of at least 100 new saved Super Wheelspins, including farming, conversion, and cleanup, are required."
+}

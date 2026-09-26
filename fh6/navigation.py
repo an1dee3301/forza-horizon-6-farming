@@ -1126,7 +1126,9 @@ class Navigator:
             obs = self.wait('sort_selection', previous=grid)
             if not obs.doc.has('Recently Added'):
                 raise RuntimeError('My Cars does not show Recently Added; no car was selected')
-            self.click_label('sort_selection', 'Recently Added')
+            # A sort-menu pointer click has silently failed in production;
+            # verified arrows and focus proof avoid a 30-second no-op wait.
+            self.keyboard_select('sort_selection', 'Recently Added')
             obs = self.wait({'garage_grid', 'car_select'}, previous='sort_selection',
                       predicate=recent_sort_verified)
             self.garage_recent_sort_verified = True
