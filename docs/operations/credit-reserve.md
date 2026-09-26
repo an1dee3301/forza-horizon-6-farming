@@ -10,7 +10,7 @@ Before a funded batch, the purchase allowance is capped using identified credit 
 
 At the reserve, the worker runs verified Mad Mike cleanup with the existing per-removal journal and protected-car rules, then saves permanent completion. It performs no terminal SP top-up and does not reopen automatically after credits increase. Interrupted final cleanup resumes before any further farming or purchases.
 
-The local panel has no new credit-reserve input yet. This release exposes the CLI/Controller option; the existing saved goal policy remains effective when the panel resumes it. No private goal, account, balance history, or receipt data is bundled.
+The Mission tab provides **Credits to keep (CR)** and a cleanup dropdown. Leave the reserve blank and choose **Keep saved / default cleanup** to preserve existing goal settings. The saved reserve and cleanup policy are shown underneath. Select **Final cleanup only** explicitly to defer cleanup. These controls are available only in saved-Super-Wheelspin mode and disabled while running. No private goal, account, balance history, or receipt data is bundled.
 
 ## Final-only cleanup
 

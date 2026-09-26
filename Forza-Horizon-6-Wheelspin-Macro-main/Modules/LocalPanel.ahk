@@ -9,6 +9,7 @@ class LocalPanel {
         this.lastPhase := ""
         this.pending := false
         this.goalPending := false
+        this.savedCreditFloor := ""
         this.editingProfile := false
         this.shareCode := "155439962"
         this.challengeSeconds := 900
@@ -83,7 +84,10 @@ class LocalPanel {
         this.gui.SetFont("s13 cC8FF00", "Bahnschrift")
         this.plan := this.gui.AddText("x46 y315 w650 h66", "Enter your current skill points.")
         this.gui.SetFont("s10 c83A8B0", "Bahnschrift")
-        this.gui.AddText("x46 y389 w650 h55", "Mega V6 → Home → Journal → Buy → My Cars → Recently Added`n→ verified mastery → repeat. Earned Super Wheelspins stay saved.")
+        this.gui.AddText("x46 y389 w160", "Credits to keep (CR)")
+        this.creditFloor := this.gui.AddEdit("x220 y382 w180 h32 Border Background111B23 cFFFFFF Number", "")
+        this.cleanupPolicy := this.gui.AddDropDownList("x430 y383 w260 Choose1", ["Keep saved / default cleanup", "Final cleanup only"])
+        this.savedCreditPolicy := this.gui.AddText("x46 y420 w650 h34", "Optional reserve: blank keeps the saved setting. No reserve by default.")
         this.gui.AddText("x46 y468 w130", "Game monitor")
         this.monitor := this.gui.AddEdit("x185 y461 w75 h30 Number Border Background111B23 cFFFFFF", "1")
         this.gui.AddText("x322 y468 w150", "Screen timeout (sec)")
@@ -192,6 +196,8 @@ class LocalPanel {
 
     RefreshPlan(*) {
         goal := this.mode.Text = "Earn saved Super Wheelspins"
+        this.creditFloor.Enabled := goal && !this.pid
+        this.cleanupPolicy.Enabled := goal && !this.pid
         lab := this.mode.Text = "Wheelspin Lab"
         this.quantityLabel.Value := goal ? "Super Wheelspins" : lab ? "Spins to open" : "Current SP"
         if lab {
@@ -269,6 +275,15 @@ class LocalPanel {
         if this.pid || this.closing || this.editingProfile
             return
         if this.mode.Text = "Earn saved Super Wheelspins" {
+            floor := Trim(this.creditFloor.Value)
+            if floor != "" && (!RegExMatch(floor, "^\d+$") || Integer(floor) < 1 || Integer(floor) > 999999999) {
+                this.status.Value := "Credits to keep must be blank or 1–999,999,999 CR."
+                return
+            }
+            if this.cleanupPolicy.Value = 2 && floor = "" && this.savedCreditFloor = "" {
+                this.status.Value := "Set Credits to keep before choosing final cleanup only."
+                return
+            }
             if !RegExMatch(this.points.Value, "^\d+$") || Integer(this.points.Value) < 1 || Integer(this.points.Value) > 10000
                 || !RegExMatch(this.reserve.Value, "^\d+$") || Integer(this.reserve.Value) > 978 {
                 this.status.Value := "Choose 1–10,000 Super Wheelspins and an SP reserve of 0–978."
@@ -340,6 +355,8 @@ class LocalPanel {
                 . " --timeout " this.Q(this.timeout.Value)
                 . " --spin-type " this.spinType.Text " --dry-run " this.dryRun.Value " --stop-on-unknown " this.stopUnknown.Value
                 . " --steam-backup " this.steamBackup.Value " --max-restarts " this.Q(this.maxRestarts.Value) " --game-priority " this.gamePriority.Value
+        if action = "run"
+            command .= this.CreditPolicyArgs()
         if action = "save-profile"
             command .= " --share-code " this.Q(this.shareCode) " --challenge-seconds " this.Q(this.challengeSeconds)
         if resumeId != ""
@@ -373,6 +390,20 @@ class LocalPanel {
         locked := this.mode.Text = "Earn saved Super Wheelspins" ? this.goalPending : this.pending
         this.points.Enabled := !busy && !locked
         this.reserve.Enabled := !busy && !locked
+        this.creditFloor.Enabled := !busy && this.mode.Text = "Earn saved Super Wheelspins"
+        this.cleanupPolicy.Enabled := !busy && this.mode.Text = "Earn saved Super Wheelspins"
+    }
+
+    CreditPolicyArgs() {
+        if this.mode.Text != "Earn saved Super Wheelspins"
+            return ""
+        result := ""
+        floor := Trim(this.creditFloor.Value)
+        if floor != ""
+            result .= " --credit-floor " this.Q(floor)
+        if this.cleanupPolicy.Value = 2
+            result .= " --cleanup-policy final_only"
+        return result
     }
 
     Poll(*) {
@@ -486,6 +517,9 @@ class LocalPanel {
         this.bar.Value := get("percent", "0")
         this.errorImage := get("error_image", "")
         this.history.Value := StrReplace(get("history", "No saved history."), " | ", "`r`n`r`n")
+        this.savedCreditFloor := get("goal_credit_floor", "")
+        savedCleanup := get("goal_cleanup_policy", "") = "final_only" ? "final cleanup only" : "saved / default cleanup"
+        this.savedCreditPolicy.Value := this.savedCreditFloor != "" ? "Saved reserve: " this.savedCreditFloor " CR  •  " savedCleanup "`nBlank preserves this setting on resume." : "Optional reserve: blank keeps the saved setting. No reserve by default."
         if this.action != "run" {
             this.mode.Choose(get("saved_mode", "Earn saved Super Wheelspins"))
             this.points.Value := this.mode.Text = "Earn saved Super Wheelspins" ? get("input_target", "10") : get("input_sp", "")

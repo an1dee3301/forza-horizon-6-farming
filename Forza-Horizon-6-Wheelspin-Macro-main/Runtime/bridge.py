@@ -113,6 +113,14 @@ def configuration(args, saved, goal=None):
                 resume_goal_id=resume_id, credit_floor=credit_floor, cleanup_policy=cleanup_policy)
 
 
+def credit_policy_fields(goal):
+    policy = goal.get('credit_stop_floor') or {}
+    valid = (isinstance(policy, dict) and policy.get('goal_id') == goal.get('id')
+             and type(policy.get('credits')) is int and 1 <= policy['credits'] <= 999_999_999)
+    return dict(goal_credit_floor=policy['credits'] if valid else '',
+                goal_cleanup_policy='final_only' if goal.get('cleanup_policy') == 'final_only' else '')
+
+
 class Status:
     def __init__(self, path):
         self.path = Path(path)
@@ -136,6 +144,8 @@ class Status:
                 self.observed = time.monotonic()
                 self.data['goal_pending'] = int(value.get('mode') == GOAL_MODE and value.get('phase') != 'complete')
                 self.data['goal_id'] = value.get('id', '') if value.get('mode') == GOAL_MODE else ''
+                if value.get('mode') == GOAL_MODE:
+                    self.data.update(credit_policy_fields(value))
             elif kind == 'activity':
                 self.active = value
             elif kind == 'cancelled':
@@ -307,6 +317,7 @@ def inspect_session(status, session):
                  share_code=load_profile().share_code, challenge_seconds=load_profile().duration_seconds,
                  input_target=goal.get('limit', 10)+goal.get('starting_spins_counted',0), goal_pending=int(goal_pending),
                  goal_reserve=goal.get('reserve_sp', 0),
+                 **credit_policy_fields(goal),
                  monitor=settings.get('monitor', 1), timeout=settings.get('timeout', 30),
                  steam_backup=int(launch.get('steam_backup', True)), max_restarts=launch.get('max_restarts', 0),
                  game_priority=int(launch.get('game_priority', True)),
