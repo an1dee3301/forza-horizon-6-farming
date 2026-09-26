@@ -634,6 +634,7 @@ def mastery_once(recognizer, capture, monitor, title, running, *, fast=True):
     pyautogui.FAILSAFE = True
     pyautogui.PAUSE = 0 if fast else .05
     poll = .05 if fast else .15
+    from fh6.mastery_focus_settle import settle as settle_movement, target_ready
     observed_at = 0.0
 
     def check():
@@ -731,7 +732,23 @@ def mastery_once(recognizer, capture, monitor, title, running, *, fast=True):
                 timed_sleep(running,.06)
             finally:
                 pyautogui.keyUp(direction)
-            timed_sleep(running,.07 if fast else .2)
+            if fast:
+                movement_started = time.perf_counter()
+                movement, elapsed, captures = settle_movement(
+                    observe, check, lambda delay: timed_sleep(running,delay), name)
+                if movement is None:
+                    # No extra .35s delay and no repeat direction from stale
+                    # focus. The ordinary current-frame check owns fallback.
+                    frame, result = observe(allow_transition=True)
+                    captures += 1
+                    if not target_ready(result,name):
+                        raise RuntimeError(f'{name}: movement focus did not settle; no repeat direction or Enter')
+                else:
+                    frame, result = movement
+                print(f'Mastery movement settle {name}: proved={movement is not None}, seconds={time.perf_counter()-movement_started:.3f}, poll_seconds={elapsed:.3f}, captures={captures}, fallback={movement is None}')
+                selected_observation = True
+                break
+            timed_sleep(running,.2)
         # Claim only after the exact caption and available interior stabilize.
         deadline, stable = time.monotonic()+3, 0
         while time.monotonic() < deadline:

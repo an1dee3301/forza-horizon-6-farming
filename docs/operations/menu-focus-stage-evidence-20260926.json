@@ -1,0 +1,20 @@
+{
+  "qualification": "Stage comparison only; not randomized or native saved-SW rate evidence. All failures and restart wall time remain in native windows.",
+  "mastery": {
+    "trial_seconds": [
+      8.266,
+      7.829
+    ],
+    "trial_median": 8.0475,
+    "comparison_median": 9.5315
+  },
+  "return": {
+    "trial_seconds": [
+      11.204,
+      11.766
+    ],
+    "trial_median": 11.485,
+    "comparison_median": 12.281
+  },
+  "baseline_scope": "Private runtime: mastery post-arrow fixed wait 0.35s; return pre-Enter fixed wait 0.30s. Public checkout had different pacing; these measurements do not establish a public-checkout speed gain."
+}

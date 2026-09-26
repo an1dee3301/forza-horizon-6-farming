@@ -1,6 +1,7 @@
 """Screen-driven navigation between the existing purchase and mastery modules."""
 import re
 import time
+from .return_focus_settle import wait_target_focus
 from dataclasses import dataclass
 
 import cv2
@@ -843,6 +844,22 @@ class Navigator:
             tx,ty=target.center
             for x,y,w,h in boxes:
                 if x <= tx <= x+w and y <= ty <= y+h:
+                    if (self.fast_navigation and
+                            ({screens} if isinstance(screens, str) else set(screens)) == {obs.screen}
+                            and (obs.screen, label) in {('journal', 'Master Explorer'),
+                                                       ('discover', 'Car Collection')}):
+                        adaptive = wait_target_focus(self, screens, label, focus_boxes,
+                            region=region, contains=contains, timeout=.3)
+                        self.emit('log', f'Return confirmation settle {label}: proved={adaptive.proved}, seconds={adaptive.elapsed:.3f}, captures={adaptive.captures}')
+                        settled = (adaptive.observation if adaptive.proved else self.wait(
+                            screens, predicate=lambda o: len(o.doc.find(label,region,contains)) == 1))
+                        settled_target = settled.doc.unique(label,region,contains)
+                        settled_boxes = focus_boxes(settled.frame)
+                        sx, sy = settled_target.center
+                        if (len(settled_boxes) != 1 or not
+                                (settled_boxes[0][0] <= sx <= settled_boxes[0][0]+settled_boxes[0][2] and
+                                 settled_boxes[0][1] <= sy <= settled_boxes[0][1]+settled_boxes[0][3])):
+                            raise RuntimeError(f'Confirmation focus changed for {label}; no Enter sent')
                     self.emit('log', f'Keyboard focus verified: {label}')
                     self.key('enter')
                     return
