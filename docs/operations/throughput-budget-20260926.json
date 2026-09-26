@@ -1,0 +1,37 @@
+{
+  "scope": "Stage budget, not native saved-wheelspin qualification",
+  "farm_samples": 2,
+  "farm_gained_sp": 721,
+  "farm_wall_seconds": 2028.0,
+  "farm_only_sp_per_hour": 1279.8816568047337,
+  "conversion_samples": 22,
+  "conversion_median_seconds": 53.79700000002049,
+  "conversion_stage_medians": {
+    "collection": 0.11699999999837019,
+    "buy": 3.9765000000188593,
+    "bought": 0.9684999999881256,
+    "choose": 23.491999999969266,
+    "open_mastery": 4.76600000000326,
+    "mastery": 8.07050000000163,
+    "return": 12.1875
+  },
+  "cleanup_reference_cars": 33,
+  "cleanup_reference_seconds": 194.197,
+  "farm_seconds_per_21_sp": 59.067961165048544,
+  "cleanup_reference_seconds_per_car": 5.884757575757575,
+  "target_total_seconds_per_saved_sw": 109.0909090909091,
+  "conversion_budget_seconds_at_33": 44.138190350102974,
+  "modeled_rate_with_stage_median": 30.315861276750177,
+  "actual_batch_rewards": 34,
+  "actual_farm_to_batch_end_wall_seconds": 4831.0,
+  "actual_mission_reward_rate_before_final_cleanup": 25.33636928172221,
+  "native_saved_sw_verified": false,
+  "limitations": [
+    "Conversion median excludes inter-worker downtime; actual batch wall retains it.",
+    "Stage medians can have different sample counts where a step was interrupted.",
+    "Farm-only SP/hour is not full-loop SP/hour.",
+    "Prior cleanup cost is a reference; deferred final cleanup remains unmeasured.",
+    "Mission rewards are not native saved inventory.",
+    "Stage arithmetic is not sustained throughput."
+  ]
+}
