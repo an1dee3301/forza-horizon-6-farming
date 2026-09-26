@@ -26,6 +26,12 @@ The observed route difference alone is too small to prove the target. At roughly
 
 The next completed 33-reward batch took about 4,570 seconds from the previous verified cleanup finish through its own verified cleanup finish, an observed **26.0 rewards/hour**. Its conversion cycles totaled 2,133 seconds, of which car selection consumed 1,005 seconds. This complete batch needs about 29 seconds less per reward to reach 33/hour. Full-menu OCR took roughly 70 ms per read in the performance counters, so OCR substitutions cannot close that gap. These are reward and wall-clock measurements, not a native saved-spin rate claim. A local opt-in native inventory cadence now records a fresh two-frame baseline at a completed batch boundary and will sample after each subsequent 100 new rewards; it is not yet part of the older public runtime.
 
-## Tool research
+## Adaptive focus experiment
+
+A single local conversion used two distinct fresh focus observations to advance eligible menu selections instead of fixed settling delays. It completed in **61.359 seconds**, compared with a ten-cycle baseline mean of **64.042 seconds** and median of **62.117 seconds**. Six checks proved focus; two fell back to normal navigation. The 2.683-second difference from the baseline mean is not a causal speed estimate: one trial is insufficient and normal cycle variance is substantial. The experiment consumed its one-cycle marker and subsequent cycles use normal pacing. Machine-readable, de-identified measurements are in [adaptive-focus-trial.json](adaptive-focus-trial.json).
+
+A reversible direct-Autoshow inspection reached the exact Mad Mike's 95,000-CR offer through manufacturer selection, recommended designs and manufacturer colors, then canceled without purchasing. Delivery and automatic equip remain unverified. A receipt-aware adapter is required before a paid trial can establish whether this route removes the roughly 30-second garage-selection stage. No full-rate qualification follows from either experiment.
+
+## Tool research sources
 
 The local [Good AI List](https://goodailist.com/) curation identifies [RapidOCR](https://github.com/RapidAI/RapidOCR), [ONNX Runtime](https://github.com/microsoft/onnxruntime), [Optuna](https://github.com/optuna/optuna), and [Supervision](https://github.com/roboflow/supervision) as possible development tools. Their installed smoke checks confirm availability, not a production speedup. The catalog is a large dynamic directory, so this is a relevant-tool review rather than an exhaustive inventory. Any OCR or inference replacement needs a labeled, offline comparison of latency and false positives before use in the game worker.

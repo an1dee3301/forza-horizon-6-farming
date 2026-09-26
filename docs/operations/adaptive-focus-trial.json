@@ -1,0 +1,15 @@
+{
+  "date": "2026-09-26",
+  "scope": "conversion only; excludes farming and cleanup",
+  "baseline_seconds": [64.531,60.547,68.891,58.578,63.281,60.672,70.828,60.953,71.391,60.750],
+  "baseline_mean_seconds": 64.0422,
+  "baseline_median_seconds": 62.117,
+  "trial_seconds": [61.359],
+  "focus_checks": {"proved": 6, "fallback": 2},
+  "deployment": "single consumed local trial; not enabled by this public data update",
+  "limitations": [
+    "One trial cannot establish causal or sustained improvement.",
+    "Manual inspection interruption excluded from this local pacing comparison remains part of full wall-clock throughput.",
+    "No native saved Super Wheelspins/hour claim. Requires two adjacent windows with at least 100 new saved spins each, including farming, conversion and cleanup."
+  ]
+}
