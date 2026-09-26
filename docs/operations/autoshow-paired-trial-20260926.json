@@ -1,0 +1,26 @@
+{
+  "experiment": "two_explicit_adjacent_autoshow_cycles",
+  "date": "2026-09-26",
+  "first_cycle": {
+    "route": "autoshow",
+    "purchase_count": 1,
+    "reward_count": 1,
+    "receipt_confirmed": true,
+    "endpoint": "home_ready",
+    "wall_seconds": 62.021,
+    "delivery_retry_count": 0
+  },
+  "second_cycle": {
+    "route": "autoshow_unpaid_fallback_then_collection",
+    "purchase_count": 1,
+    "reward_count": 1,
+    "endpoint": "collection",
+    "wall_seconds": 96.682,
+    "fallback_reason": "Recommended Designs was still loading at12-second deadline"
+  },
+  "pair_wall_seconds": 158.703,
+  "mean_wall_seconds_per_reward": 79.3515,
+  "production_speed_improvement_proven": false,
+  "native_saved_sw_rate_qualified": false,
+  "scope": "Conversion only; complete goal qualification continues to include all farm, conversion, cleanup and experiment wall time"
+}
