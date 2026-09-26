@@ -105,7 +105,11 @@ class LocalPanel {
         this.stats := this.gui.AddEdit("x46 y236 w650 h124 ReadOnly Multi VScroll Border Background0C131A cF4FBFB", "No run started.")
         this.bar := this.gui.AddProgress("x46 y374 w650 h12 cC8FF00 Background18232B Range0-100", 0)
         this.gui.SetFont("s11 cC8FF00")
-        this.stage := this.gui.AddText("x46 y410 w650 h48 +0x80", "Waiting")
+        this.inventorySummary := this.gui.AddText("x46 y398 w650 h25", "SAVED SW / WS: awaiting live game read")
+        this.gui.SetFont("s8 c83A8B0")
+        this.inventoryTimestamp := this.gui.AddText("x46 y425 w650 h19", "Inventory comes only from My Horizon")
+        this.gui.SetFont("s11 cC8FF00")
+        this.stage := this.gui.AddText("x46 y448 w650 h25 +0x80", "Waiting")
         this.gui.SetFont("s9 c83A8B0")
         this.gui.AddText("x46 y477 w650 h42", "SP is read from the game; ≤ marks an unfinished tree.`nCloud sync blocks every input and restart until verified.")
         this.tabs.UseTab(3)
@@ -433,6 +437,8 @@ class LocalPanel {
         this.challengeSeconds := get("challenge_seconds", this.challengeSeconds)
         this.status.Value := get("message", "Waiting…")
         this.stage.Value := get("stage", "Waiting")
+        this.inventorySummary.Value := get("inventory_line", "SAVED SW / WS: awaiting live game read")
+        this.inventoryTimestamp.Value := get("inventory_read", "Inventory comes only from My Horizon")
         if this.pid {
             if this.channel != "" && FileExist(this.channel "\stop")
                 this.runState.Value := "STOPPING"

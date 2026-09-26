@@ -211,23 +211,11 @@ class Status:
                     self.data.update({k:v.replace('\n',' || ') for k,v in panel_data(analytics).items()})
                     self.data['eta_range'] = f"{analytics['eta_seconds']/3600:.1f}–{analytics['eta_upper_seconds']/3600:.1f} h estimated"
                     from fh6.reporting import read_json
-                    from fh6.inventory import PROOF
-                    from datetime import datetime
+                    from fh6.panel_inventory import inventory_labels
                     proof=read_json(WORKSPACE/'runs/inventory_observed.json')
                     runtime=read_json(WORKSPACE/'runs/report_runtime.json')
                     account=read_json(WORKSPACE/'runs/account_observed.json')
-                    valid=(proof.get('goal_id')==self.session.get('id') and proof.get('proof')==PROOF
-                           and proof.get('samples')==2 and proof.get('worker_pid')==runtime.get('pid')==os.getpid()
-                           and runtime.get('worker_run') and proof.get('worker_run')==runtime['worker_run']
-                           and str(proof.get('gamertag','')).casefold()==str(account.get('gamertag','')).casefold()
-                           and all(type(proof.get(k)) is int and proof[k]>=0 for k in ('super_wheelspins','wheelspins')))
-                    if valid:
-                        observed=datetime.fromisoformat(proof['observed_at'])
-                        started=datetime.fromisoformat(runtime['worker_started_at'])
-                        valid=observed.tzinfo is not None and started<=observed<=datetime.now(observed.tzinfo)
-                    self.data['inventory_line']=(f"SAVED  {proof['super_wheelspins']:,} SW  |  {proof['wheelspins']:,} WS"
-                        if valid else 'SAVED SW / WS: awaiting live game read')
-                    self.data['inventory_read']=(f"Read {proof['observed_at']}" if valid else 'Inventory comes only from My Horizon')
+                    self.data.update(inventory_labels(proof, self.session, account, runtime, os.getpid()))
                 except Exception:
                     self.data['analytics_text'] = 'Measurements temporarily unavailable; game execution continues.'
             self.data.update(completed=values['completed'], bought=self.session.get('bought', 0),
