@@ -39,7 +39,7 @@ def test_focus_change_stops_before_next_input():
 
 
 @pytest.mark.parametrize('visual_start,proof',[(True,True),(True,False),(False,True),(False,False)])
-def test_cleanup_preserves_identity_target_confirmation_and_journal(visual_start,proof):
+def test_cleanup_preserves_identity_target_confirmation_and_journal(visual_start,proof,tmp_path):
     grid=SimpleNamespace(screen='garage_grid',frame=None,
         doc=Document([Text('#123 MAD MIKE 808',(450,220,260,30))]))
     action=SimpleNamespace(screen='car_action',frame=None,doc=Document([
@@ -49,6 +49,8 @@ def test_cleanup_preserves_identity_target_confirmation_and_journal(visual_start
     nav.fast_navigation=True
     nav.wait.side_effect=[grid,grid]+([] if visual_start and proof else [action])+[empty]
     tracker=Mock()
+    tracker.root=tmp_path
+    nav.setup_checks.identity.return_value=['pid:creation']
     tracker.data={'garage_cleanup':{'duplicates_disabled':True,'removed':0}}
     with patch('fh6.garage_cleanup.selected_mad_mike') as identity, \
             patch('fh6.garage_cleanup.selected_card',side_effect=SelectedCardError(0)), \
@@ -61,7 +63,8 @@ def test_cleanup_preserves_identity_target_confirmation_and_journal(visual_start
     identity.assert_called_once_with(nav,grid)
     spaced.assert_called_once()
     tight.assert_not_called()
-    assert ('garage_removed',{'count':1}) in [c.args for c in tracker.event.call_args_list]
+    removal=[c.args[1] for c in tracker.event.call_args_list if c.args[0]=='garage_removed']
+    assert len(removal)==1 and removal[0]['count']==1 and removal[0]['operation_id']
     if proof:
         nav.keyboard_select.assert_not_called()
         assert [c.args for c in nav.key.call_args_list]==[('enter',),('enter',),('down',),('enter',)]

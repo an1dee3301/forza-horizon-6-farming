@@ -74,13 +74,15 @@ def test_pending_scope_is_restored_and_no_input_repeated(fails):
     nav.wait.assert_called_once()
 
 
-def test_cleanup_wait_failure_does_not_repeat_yes_or_record_removal():
+def test_cleanup_wait_failure_does_not_repeat_yes_or_record_removal(tmp_path):
     grid=SimpleNamespace(screen='garage_grid',frame=None,
         doc=Document([Text('#123 MAD MIKE 808',(450,220,260,30))]))
     nav=Mock()
     nav.fast_navigation=False
     nav.wait.side_effect=[grid,grid,RuntimeError('Timed out waiting for garage_grid')]
     tracker=Mock()
+    tracker.root=tmp_path
+    nav.setup_checks.identity.return_value=['pid:creation']
     tracker.data={'garage_cleanup':{}}
     with patch('fh6.garage_cleanup.selected_mad_mike'),patch('fh6.garage_cleanup.update_panel'), \
             patch('fh6.garage_cleanup.visual_gate',return_value=True):
