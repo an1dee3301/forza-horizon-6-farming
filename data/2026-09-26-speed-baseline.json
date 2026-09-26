@@ -13,6 +13,11 @@
     "active_seconds": 2052.515,
     "sp_per_car": 21
   },
+  "cleanup_sample": {
+    "cars_removed": 32,
+    "full_wall_seconds_approx": 335,
+    "median_inter_removal_seconds": 7
+  },
   "saved_sw_rate_verified": false,
   "qualification": "Two adjacent windows of at least 100 new saved Super Wheelspins, including farming, conversion, and cleanup, are required."
 }

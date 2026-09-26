@@ -20,6 +20,8 @@ Recent production traces show a repeated six-key traversal in the garage sort di
 
 An earlier three-car prebuy pilot preserved distinct receipts and proved three saved rewards. Its comparable core route saved only 11.3 seconds per triplet; including native proof and return it was slower than ordinary conversion. Larger prebuy batches lack verified card selection across scrolling and resumable partial-cohort recovery, so they are research candidates rather than production changes.
 
+A one-car seven-Down cleanup pilot is prepared locally and passes 17 offline tests. The latest 32-car cleanup took about 335 seconds from start through final verification; its median interval between removals was 7 seconds. The proposed input burst might save about 1.8–2 seconds per removal, but this is a projection. It remains isolated until a single removal proves the exact filtered Mad Mike, fresh menu focus, Yes confirmation, journal entry, and returned grid. The prior world Pause conversion pilot could not buy from that screen and had no measured speed gain.
+
 The observed route difference alone is too small to prove the target. At roughly 63–65 seconds per conversion plus about 61 seconds of farming per 21 SP, the full operation needs a larger measured improvement, including cleanup time. Continue measuring complete wall-clock windows with fresh native saved-spin evidence. Claim the 33/hour target only after two adjacent windows each add at least 100 saved Super Wheelspins.
 
 ## Tool research
