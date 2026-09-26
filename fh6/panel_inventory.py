@@ -34,6 +34,6 @@ def inventory_labels(proof, session, account, runtime, worker_pid, *, now=None):
                 str(session['credit_account']).casefold() != str(account['gamertag']).casefold()):
             return missing
         return dict(inventory_line=f"LAST VERIFIED  {proof['super_wheelspins']:,} SW  |  {proof['wheelspins']:,} WS",
-                    inventory_read=f"Verified {proof['observed_at']} · previous worker; current balance not reread")
+                    inventory_read=f"Verified {proof['observed_at']} · current balance not reread")
     except (KeyError, TypeError, ValueError, AttributeError):
         return missing
