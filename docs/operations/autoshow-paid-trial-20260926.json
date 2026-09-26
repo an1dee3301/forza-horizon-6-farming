@@ -1,0 +1,27 @@
+{
+  "experiment": "direct_autoshow_single_cycle",
+  "date": "2026-09-26",
+  "status": "completed_with_delivery_recovery",
+  "purchase_count": 1,
+  "purchase_cost_cr": 95000,
+  "receipt_confirmed": true,
+  "fresh_mastery_tree_verified": true,
+  "reward_node_verified": true,
+  "returned_to_collection": true,
+  "wall_seconds_between_adjacent_cycle_completions": 71.637,
+  "reported_active_cycle_seconds": 67.265,
+  "home_to_final_buy_seconds": 23.031,
+  "delivery_first_attempt_seconds": 17.094,
+  "delivery_recovery_attempt_seconds": 5.5,
+  "mastery_seconds": 8.41,
+  "return_seconds": 12.431,
+  "normal_recent_cycle_median_seconds": 58.6,
+  "comparison": "Descriptive reference only; single trial, not controlled comparison",
+  "production_speed_improvement_proven": false,
+  "native_saved_sw_rate_qualified": false,
+  "scope": "Conversion only; farming, cleanup and all experiment/recovery wall time remain in the overall goal history",
+  "next_work": [
+    "Read-only delivery transition wait without repeated input",
+    "Explicit adjacent-cycle Home endpoint trial"
+  ]
+}
