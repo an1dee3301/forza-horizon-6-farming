@@ -1,0 +1,25 @@
+{
+  "baseline_sort_routes_seconds": [
+    5.962,
+    5.984,
+    6.026,
+    6.107,
+    6.016,
+    6.057,
+    6.06,
+    6.032,
+    6.142,
+    6.052,
+    6.103,
+    6.053
+  ],
+  "baseline_mean_seconds": 6.0495,
+  "trial_sort_route_seconds": 3.031,
+  "trial_completed_cycles": [
+    {
+      "cycle": 16,
+      "seconds": 59.32799999997951
+    }
+  ],
+  "scope": "Conversion sort route only; not sustained saved SW/hour. Trial full route includes setup and grid proof. Restart wall time remains part of qualification."
+}
