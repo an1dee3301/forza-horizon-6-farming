@@ -31,6 +31,8 @@ For development installs, clone the repository and run the same setup file. Test
 5. Press **F6**.
 6. Press **F7** whenever you want the worker to stop safely.
 
+To keep a credit reserve, set **Credits to keep (CR)** in the Mission tab. Choose **Final cleanup only** to accumulate Mad Mikes during farming and remove them together when the reserve stops purchases. Blank reserve and **Keep saved / default cleanup** preserve the current goal's settings. See [credit reserve and final cleanup](docs/operations/credit-reserve.md) for resume behavior and CLI options.
+
 The program can launch FH6 through Steam and resume after a crash. A visible cloud-sync gate always takes priority; it waits for synchronization and never chooses offline play.
 
 ### Production loop
@@ -41,8 +43,8 @@ The program can launch FH6 through Steam and resume after a crash. A visible clo
 4. Open My Cars → Recently Added and select the newest untouched copy.
 5. Claim and visually verify all six required mastery nodes.
 6. Record the Super Wheelspin reward and return to the next purchase.
-7. At the configured cleanup interval, remove processed Mad Mikes and verify the filtered inventory.
-8. In credit-limited mode, stop buying below 95,000 CR, finish any paid copy, top SP up to 999, remove the remaining Mad Mikes, verify zero, and stop.
+7. Apply the selected cleanup policy: configured intervals, or defer removal until the final credit-reserve stop.
+8. With a credit reserve, finish any paid copy, stop before another purchase would cross the reserve, remove the remaining Mad Mikes, verify zero, and stop without an SP top-up. Without a reserve, credit-exhaustion mode retains its final 999-SP top-up and cleanup.
 
 This production mode saves rewards. The separate Wheelspin Lab opens saved spins.
 
