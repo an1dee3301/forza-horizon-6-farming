@@ -260,6 +260,23 @@ def start_watcher():
                      cwd=core.BASE, creationflags=subprocess.CREATE_NO_WINDOW)
 
 
+def start_if_enabled():
+    """Restore the independent singleton reporter without delaying game startup."""
+    def launch():
+        try:
+            if secrets.enabled():
+                start_watcher()  # watch() owns the Windows singleton mutex.
+        except Exception:
+            try:
+                write_json(STATE, {**read_json(STATE), 'last_attempt': now(),
+                    'error': 'Discord reporter could not start; game execution is unaffected'})
+            except OSError:
+                pass
+    thread = threading.Thread(target=launch, name='discord-reporter-start', daemon=True)
+    thread.start()
+    return thread
+
+
 def settings_window():
     import tkinter as tk
     window = tk.Tk()

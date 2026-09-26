@@ -394,6 +394,8 @@ def main(argv=None):
         launch_tmp.write_text(json.dumps(dict(steam_backup=bool(args.steam_backup),
                                              max_restarts=args.max_restarts, game_priority=bool(args.game_priority))), encoding='utf-8')
         launch_tmp.replace(launch_path)
+        from fh6.discord_reports import start_if_enabled
+        start_if_enabled()
         status.write(busy=1, ok=1, message='Starting in five seconds. Switch to the game.')
         controller.start(config, delay=5)
         while controller.busy:
