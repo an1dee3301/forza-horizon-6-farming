@@ -1,0 +1,139 @@
+{
+  "routes": [
+    {
+      "cycle": 27,
+      "result": "burst",
+      "seconds": 3.047
+    },
+    {
+      "cycle": 28,
+      "result": "burst",
+      "seconds": 3.047
+    },
+    {
+      "cycle": 29,
+      "result": "burst",
+      "seconds": 3.047
+    },
+    {
+      "cycle": 30,
+      "result": "burst",
+      "seconds": 2.984
+    },
+    {
+      "cycle": 31,
+      "result": "burst",
+      "seconds": 3.062
+    },
+    {
+      "cycle": 32,
+      "result": "burst",
+      "seconds": 3.0
+    },
+    {
+      "cycle": 33,
+      "result": "burst",
+      "seconds": 3.032
+    },
+    {
+      "cycle": 34,
+      "result": "burst",
+      "seconds": 3.079
+    },
+    {
+      "cycle": 35,
+      "result": "burst",
+      "seconds": 3.141
+    }
+  ],
+  "route_means_seconds": {
+    "burst": 3.048777777777778
+  },
+  "completed_cycles": [
+    {
+      "cycle": 26,
+      "reported_cycle_seconds": 59.84399999998277,
+      "observed_wall_seconds": 12.549,
+      "first_observed_phase": "return",
+      "full_cycle_observed": false
+    },
+    {
+      "cycle": 27,
+      "reported_cycle_seconds": 62.29699999996228,
+      "observed_wall_seconds": 62.384,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    },
+    {
+      "cycle": 28,
+      "reported_cycle_seconds": 58.17200000002049,
+      "observed_wall_seconds": 57.751,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    },
+    {
+      "cycle": 29,
+      "reported_cycle_seconds": 69.15600000001723,
+      "observed_wall_seconds": 69.145,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    },
+    {
+      "cycle": 30,
+      "reported_cycle_seconds": 57.81199999997625,
+      "observed_wall_seconds": 57.769,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    },
+    {
+      "cycle": 31,
+      "reported_cycle_seconds": 57.32799999997951,
+      "observed_wall_seconds": 57.235,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    },
+    {
+      "cycle": 32,
+      "reported_cycle_seconds": 58.07900000002701,
+      "observed_wall_seconds": 57.992,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    },
+    {
+      "cycle": 33,
+      "reported_cycle_seconds": 59.25,
+      "observed_wall_seconds": 59.199,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    },
+    {
+      "cycle": 34,
+      "reported_cycle_seconds": 63.04599999997299,
+      "observed_wall_seconds": 63.01,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    },
+    {
+      "cycle": 35,
+      "reported_cycle_seconds": 57.54700000002049,
+      "observed_wall_seconds": 57.58,
+      "first_observed_phase": "collection",
+      "full_cycle_observed": true
+    }
+  ],
+  "failures": [
+    {
+      "cycle": 35,
+      "stage": "garage_cleanup"
+    },
+    {
+      "cycle": 35,
+      "stage": "garage_cleanup"
+    },
+    {
+      "cycle": 35,
+      "stage": "garage_cleanup"
+    }
+  ],
+  "scope": "Observed conversion timings only. Includes sort setup, fallback and grid proof. Incomplete routes are not timed. Not a native saved-SW rate; all restart, farm and cleanup wall time must remain in qualification windows."
+}
