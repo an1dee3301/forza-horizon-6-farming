@@ -1,0 +1,17 @@
+{
+  "date": "2026-09-26",
+  "route": "direct_autoshow_v1",
+  "scope": "One supervised paid car, followed by normal-worker handoff",
+  "purchases": 1,
+  "price_cr": 95000,
+  "delivery_evidence": "Exact Mad Mike model and price on final Buy dialog, one purchase input, then current Mad Mike with fresh unowned mastery tree. Prior copy's six reward-path nodes were owned.",
+  "auto_equipped": true,
+  "reward_claimed_by_normal_worker": true,
+  "subsequent_normal_cycle_started": true,
+  "handoff_issue": "Car receipt checkpoint advanced before goal accounting. Normal Production.sync reconciled the confirmed purchase once before restart.",
+  "manual_trial_started_local": "2026-09-26T14:56:56+09:00",
+  "normal_worker_reward_verified_local": "2026-09-26T15:22:52+09:00",
+  "timing_limit": "Manual navigation and handoff downtime are included in qualification wall time. This trial proves route feasibility, not speed or sustained native SW/hour.",
+  "next_trial": "Bounded automated Autoshow route to eliminate normal garage-selection phase, disabled until reviewed",
+  "qualification": "Two adjacent >=100-new-native-SW windows at >=33/hour remain unproven"
+}

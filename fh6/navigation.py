@@ -1371,6 +1371,8 @@ class Navigator:
         return self.wait('mad_mike_mastery', previous={'upgrades', 'car_mastery'})
 
     def verify_fresh_mastery(self, obs, verified_points=None):
+        from .mastery_settle import settle_fresh_tree
+        obs = settle_fresh_tree(self, obs)
         nodes = obs.result.get('nodes', {})
         if len(nodes) != 6 or any(n['state'] in {'owned', 'unknown'} for n in nodes.values()):
             raise RuntimeError('This Mazda does not have a fresh mastery path; no points spent')
