@@ -13,6 +13,7 @@ import numpy as np
 import forza_cycle as core
 from .navigation import selected_card, SelectedCardError, label_focused
 from .garage import FILTER_REGION
+from .cleanup_spacing import spaced_four_to_focus
 
 
 FILTER_NAME = 'S1 + Drift Cars + Duplicates'
@@ -234,12 +235,19 @@ class GarageCleanup:
                     raise RuntimeError('Filtered grid changed without a provably empty result')
                 selected_mad_mike(self.nav, obs)
                 action = None
+                burst_attempted = False
                 for attempt in range(3):
                     self.nav.key('enter')
                     if visual_gate(self.nav, 'car_action', 'get_in_selected'):
-                        for _ in range(4):
-                            self.nav.key('down')
-                        if visual_gate(self.nav, 'car_action', 'remove_selected', timeout=.4):
+                        burst_attempted = True
+                        if getattr(self.nav, 'fast_navigation', False) is True:
+                            ready = spaced_four_to_focus(self.nav,
+                                lambda current: focused(current, 'Remove Car From Garage')) is not None
+                        else:
+                            for _ in range(4):
+                                self.nav.key('down')
+                            ready = visual_gate(self.nav, 'car_action', 'remove_selected', timeout=.4)
+                        if ready:
                             self.nav.key('enter')
                             break
                     try:
@@ -256,8 +264,15 @@ class GarageCleanup:
                     if (len(action.doc.find('Remove Car From Garage')) != 1 or
                             len(action.doc.find('Get In Car')) != 1):
                         raise RuntimeError('Mad Mike action menu is ambiguous; no removal sent')
-                    ready = pulse_to_focus(self.nav, action, 'Get In Car',
-                                           'Remove Car From Garage', 4)
+                    if burst_attempted:
+                        ready = None  # Fresh OCR selector, never another pulse group.
+                    elif (getattr(self.nav, 'fast_navigation', False) is True and
+                          focused(action, 'Get In Car')):
+                        ready = spaced_four_to_focus(self.nav,
+                            lambda current: focused(current, 'Remove Car From Garage'))
+                    else:
+                        ready = pulse_to_focus(self.nav, action, 'Get In Car',
+                                               'Remove Car From Garage', 4)
                     if ready is not None:
                         self.nav.key('enter')
                     else:

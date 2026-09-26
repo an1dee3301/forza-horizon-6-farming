@@ -1,0 +1,364 @@
+{
+  "measurement_date": "2026-09-26",
+  "basis": "Garage Enter to first observed garage grid after confirmation; filtering and gaps excluded",
+  "scope": "Captured removal intervals only; no full-batch or saved-SW/hour claim",
+  "groups": {
+    "spaced_four": {
+      "count": 3,
+      "mean_seconds": 4.01,
+      "median_seconds": 4.027,
+      "min_seconds": 3.949,
+      "max_seconds": 4.054
+    },
+    "tight_four_with_fallback": {
+      "count": 28,
+      "mean_seconds": 7.8689,
+      "median_seconds": 7.2055,
+      "min_seconds": 6.494,
+      "max_seconds": 15.641
+    }
+  },
+  "removals": [
+    {
+      "sequence": 1,
+      "variant": "spaced_four",
+      "seconds": 4.027,
+      "action_down_count": 4,
+      "first_down_gaps_seconds": [
+        0.153,
+        0.156,
+        0.154
+      ]
+    },
+    {
+      "sequence": 2,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.237,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.066,
+        0.052
+      ]
+    },
+    {
+      "sequence": 3,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.383,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.054,
+        0.065,
+        0.067
+      ]
+    },
+    {
+      "sequence": 4,
+      "variant": "tight_four_with_fallback",
+      "seconds": 13.104,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.067,
+        0.053
+      ]
+    },
+    {
+      "sequence": 5,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.131,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.067,
+        0.052
+      ]
+    },
+    {
+      "sequence": 6,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.333,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.067,
+        0.054
+      ]
+    },
+    {
+      "sequence": 7,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.202,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.052,
+        0.068,
+        0.067
+      ]
+    },
+    {
+      "sequence": 8,
+      "variant": "tight_four_with_fallback",
+      "seconds": 6.494,
+      "action_down_count": 6,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.052,
+        0.068
+      ]
+    },
+    {
+      "sequence": 9,
+      "variant": "spaced_four",
+      "seconds": 4.054,
+      "action_down_count": 4,
+      "first_down_gaps_seconds": [
+        0.155,
+        0.157,
+        0.156
+      ]
+    },
+    {
+      "sequence": 10,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.278,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.066,
+        0.054
+      ]
+    },
+    {
+      "sequence": 11,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.27,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.054,
+        0.066
+      ]
+    },
+    {
+      "sequence": 12,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.19,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.069,
+        0.068,
+        0.064
+      ]
+    },
+    {
+      "sequence": 13,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.167,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.067,
+        0.052
+      ]
+    },
+    {
+      "sequence": 14,
+      "variant": "spaced_four",
+      "seconds": 3.949,
+      "action_down_count": 4,
+      "first_down_gaps_seconds": [
+        0.142,
+        0.158,
+        0.155
+      ]
+    },
+    {
+      "sequence": 15,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.295,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.053,
+        0.065,
+        0.068
+      ]
+    },
+    {
+      "sequence": 16,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.359,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.053,
+        0.068
+      ]
+    },
+    {
+      "sequence": 17,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.375,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.067,
+        0.067
+      ]
+    },
+    {
+      "sequence": 18,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.114,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.052,
+        0.067
+      ]
+    },
+    {
+      "sequence": 19,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.209,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.066,
+        0.052
+      ]
+    },
+    {
+      "sequence": 20,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.174,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.053,
+        0.066,
+        0.068
+      ]
+    },
+    {
+      "sequence": 21,
+      "variant": "tight_four_with_fallback",
+      "seconds": 15.641,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.066,
+        0.067
+      ]
+    },
+    {
+      "sequence": 22,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.18,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.054,
+        0.068
+      ]
+    },
+    {
+      "sequence": 23,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.094,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.066,
+        0.068,
+        0.053
+      ]
+    },
+    {
+      "sequence": 24,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.268,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.068,
+        0.054
+      ]
+    },
+    {
+      "sequence": 25,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.219,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.068,
+        0.052,
+        0.068
+      ]
+    },
+    {
+      "sequence": 26,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.121,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.053,
+        0.069
+      ]
+    },
+    {
+      "sequence": 27,
+      "variant": "tight_four_with_fallback",
+      "seconds": 6.969,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.07,
+        0.066,
+        0.062
+      ]
+    },
+    {
+      "sequence": 28,
+      "variant": "tight_four_with_fallback",
+      "seconds": 6.964,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.067,
+        0.068,
+        0.067
+      ]
+    },
+    {
+      "sequence": 29,
+      "variant": "tight_four_with_fallback",
+      "seconds": 12.477,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.062,
+        0.068,
+        0.066
+      ]
+    },
+    {
+      "sequence": 30,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.033,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.066,
+        0.068,
+        0.053
+      ]
+    },
+    {
+      "sequence": 31,
+      "variant": "tight_four_with_fallback",
+      "seconds": 7.049,
+      "action_down_count": 7,
+      "first_down_gaps_seconds": [
+        0.052,
+        0.068,
+        0.067
+      ]
+    }
+  ]
+}
