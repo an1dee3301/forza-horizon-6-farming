@@ -246,8 +246,35 @@ class Production:
             self.emit('status', 'Terminal reserve verified at 999 SP; removing all Mad Mike cars')
         self.goal.save(**changes)
 
+    def observe_final_inventory(self):
+        """Optional post-completion reporting; never reopens work on read failure."""
+        if self.goal.data.get('phase') != 'complete' or self.goal.data.get('final_inventory') is not None:
+            return None
+        self.goal.save(final_inventory={'status': 'attempting'})
+        try:
+            account = self.goal.data.get('credit_account')
+            observed = getattr(getattr(self.nav, 'account_observer', None), 'gamertag', None)
+            if not isinstance(account, str) or not account or not isinstance(observed, str) or observed.casefold() != account.casefold():
+                raise RuntimeError('Final inventory account is not verified')
+            from .inventory_route import refresh_inventory
+            proof = refresh_inventory(self.nav, self.goal.data, interval=0, stay_pause=True)
+            if (not isinstance(proof, dict) or proof.get('goal_id') != self.goal.data['id']
+                    or str(proof.get('gamertag', '')).casefold() != account.casefold()
+                    or proof.get('proof') != 'two_fresh_my_horizon_frames' or proof.get('samples') != 2
+                    or not isinstance(proof.get('observed_at'), str)
+                    or any(type(proof.get(k)) is not int or proof[k] < 0 for k in ('super_wheelspins', 'wheelspins'))):
+                raise RuntimeError('Final inventory proof is incomplete')
+        except Exception as exc:
+            self.goal.save(final_inventory={'status': 'unavailable', 'reason': str(exc)})
+            self.emit('log', 'Final inventory observation unavailable; completed cleanup remains final.')
+            return None
+        self.goal.save(final_inventory={'status': 'verified', 'proof': proof})
+        return proof
+
     def cleanup_credit_limit(self):
         """Remove every Mad Mike after the final affordable conversion."""
+        if self.goal.data.get('phase') == 'complete':
+            return
         self.nav.check()
         if self.terminal_cleaner is not None:
             removed = self.boundary('terminal_garage_cleanup',
@@ -260,6 +287,7 @@ class Production:
             removed = self.boundary('terminal_garage_cleanup', lambda:
                 GarageCleanup(self.nav, Tracker(), emit=self.emit).run(reset_filter_state=True))
         self.goal.save(phase='complete', completed=self.goal.data['rewards'])
+        self.observe_final_inventory()
         reason = 'Credit reserve protected' if self.goal.data.get('end_reason') == 'credit_stop_floor' else 'Credit limit reached'
         self.emit('status', f'{reason}; garage verified empty after removing {removed:,} Mad Mike cars in the final pass')
         self.progress()
