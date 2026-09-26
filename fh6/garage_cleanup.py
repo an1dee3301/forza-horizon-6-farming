@@ -111,6 +111,17 @@ def visual_gate(nav, screen, flag, timeout=.65):
     return False
 
 
+def wait_after_removal_yes(nav):
+    """Observe acknowledgement of one verified Yes; never repeat confirmation."""
+    prior = getattr(nav, '_garage_remove_pending', False)
+    nav._garage_remove_pending = True
+    try:
+        return nav.wait('garage_grid', previous='remove_confirmation', timeout=12,
+                        predicate=lambda obs: True, stable_frames=2)
+    finally:
+        nav._garage_remove_pending = prior
+
+
 def selected_mad_mike(nav, obs):
     """Prove that the focused card is the exact filtered Mazda."""
     box = selected_card(obs.frame)
@@ -297,17 +308,8 @@ class GarageCleanup:
                             confirmation = self.nav.wait('remove_confirmation', predicate=complete_confirmation,
                                                          stable_frames=1)
                         self.nav.keyboard_select('remove_confirmation', 'Yes')
-                    try:
-                        obs = self.nav.wait('garage_grid', previous='remove_confirmation', timeout=5,
-                                            stable_frames=1)
-                        break
-                    except RuntimeError as exc:
-                        if 'Timed out' not in str(exc) or attempt == 2:
-                            raise
-                        confirmation = self.nav.wait('remove_confirmation')
-                        if (len(confirmation.doc.find('Yes')) != 1 or
-                                len(confirmation.doc.find('No')) != 1):
-                            raise RuntimeError('Removal confirmation changed during retry')
+                    obs = wait_after_removal_yes(self.nav)
+                    break
                 removed += 1
                 self.tracker.event('garage_removed', {'count': 1})
                 if removed == 1 or removed % 5 == 0:

@@ -373,6 +373,17 @@ def visible_collection_target_hint(obs):
             len(obs.doc.find('1974 Mazda', (columns[0], rows[0]+175, 326, 70))) == 1)
 
 
+def fading_removal_title(doc):
+    """Read-only transition hint for observed OCR variants in the native box."""
+    titles = [line for line in doc.lines if normalize(line.text) in {
+        'remove car from', 'remove car from garage',
+        'remove car from garce', 'remove car from garace'}]
+    if len(titles) != 1:
+        return False
+    x, y, w, h = titles[0].box
+    return 600 <= x < x+w <= 1340 and 388 <= y < y+h <= 476 and w >= 400
+
+
 class Navigator:
     def __init__(self, recognizer, reader, capture, monitor, title, running, timeout=30, emit=lambda *a: None):
         self.recognizer, self.reader = recognizer, reader
@@ -519,6 +530,11 @@ class Navigator:
                                   'unsaved changes' in text and
                                   'save and continue' in text and
                                   'cancel' in text)
+        # Only after a verified Yes: a fading title can lose or corrupt its
+        # last word. It remains unknown/read-only, never an actionable dialog.
+        if (getattr(self, '_garage_remove_pending', False) is True and
+                screen == 'unknown' and fading_removal_title(doc)):
+            danger = tuple(phrase for phrase in danger if phrase != 'remove car')
         if (any(phrase in text for phrase in danger)
                 and screen not in {'car_action', 'remove_confirmation'}
                 and not expected_settings_save):

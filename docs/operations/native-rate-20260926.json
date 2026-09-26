@@ -1,0 +1,17 @@
+{
+  "measurement_date": "2026-09-26",
+  "baseline": {"at": "2026-09-26T01:36:48Z", "saved_super_wheelspins": 1709},
+  "endpoint": {"at": "2026-09-26T06:40:00Z", "saved_super_wheelspins": 1812, "regular_wheelspins": 337},
+  "new_saved_super_wheelspins": 103,
+  "wall_seconds": 18192,
+  "saved_super_wheelspins_per_hour": 20.383,
+  "wall_time_includes": ["farming", "conversion", "cleanup", "manual_trials", "restarts"],
+  "target_saved_super_wheelspins_per_hour": 33,
+  "minimum_new_saved_super_wheelspins_per_window": 100,
+  "required_adjacent_passing_windows": 2,
+  "qualified": false,
+  "complete_evidence": false,
+  "mission_rewards_in_window": 103,
+  "journaled_removals_in_window": 95,
+  "qualification_note": "The measured rate is below target, cleanup journal coverage is incomplete, and two adjacent passing windows have not been established."
+}
