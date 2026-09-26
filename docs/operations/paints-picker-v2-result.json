@@ -1,0 +1,14 @@
+{
+  "outcome": "rejected_as_speed_improvement",
+  "trial_cycle": 2,
+  "trial_overhead_seconds": 47.75,
+  "open_picker_seconds": 17.61,
+  "sort_proof_wait_seconds": 30.14,
+  "full_trial_cycle_wall_seconds": 103.431,
+  "preceding_normal_cycle_wall_seconds": 60.319,
+  "recovered_same_paid_car": true,
+  "repeated_purchase": false,
+  "diagnosis": "Sort opened, but the required Recently Added proof was not obtained. Fallback recognized Sort Selection without intervening input. Actual Paints sort options were not captured, so missing label and OCR failure remain unresolved.",
+  "next_action": "Do not retry unchanged. Capture actual picker sort options before another route test.",
+  "scope": "Single conversion trial including normal recovery. No sustained saved-SW/hour claim."
+}
