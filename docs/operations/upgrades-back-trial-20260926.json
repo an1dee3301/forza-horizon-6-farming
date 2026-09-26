@@ -1,0 +1,53 @@
+{
+  "experiment": "Upgrades Back settling",
+  "date": "2026-09-26",
+  "change": "0.35-second input-free wait before the first Back from Upgrades reached from Mad Mike mastery",
+  "design": "Eight sequential trial cars followed by eight normal-timing cars in the same funded batch",
+  "cohorts": {
+    "trial": {
+      "complete_cycles": 8,
+      "required_cycles": 8,
+      "full_cycle_wall_seconds": {
+        "measured_count": 8,
+        "median": 54.661,
+        "sum": 445.195
+      },
+      "full_return_wall_seconds": {
+        "measured_count": 8,
+        "median": 11.853,
+        "sum": 95.333
+      },
+      "cohort_wall_seconds": 445.673,
+      "overhead_between_cycles_seconds": 0.478,
+      "failures_including_incomplete_attempts": 0
+    },
+    "control": {
+      "complete_cycles": 8,
+      "required_cycles": 8,
+      "full_cycle_wall_seconds": {
+        "measured_count": 8,
+        "median": 52.2795,
+        "sum": 420.913
+      },
+      "full_return_wall_seconds": {
+        "measured_count": 8,
+        "median": 12.403,
+        "sum": 97.234
+      },
+      "cohort_wall_seconds": 421.387,
+      "overhead_between_cycles_seconds": 0.474,
+      "failures_including_incomplete_attempts": 0
+    }
+  },
+  "retries": {
+    "trial": 0,
+    "control": 5
+  },
+  "decision": "Not promoted; no complete conversion wall-time improvement established.",
+  "limits": [
+    "Sequential small sample, not randomized; first-car setup and unrelated menu delays differ.",
+    "Trial full-return median11.853s vs normal12.403s; whole cohort trial445.673s vs normal421.387s.",
+    "Conversion-only evidence. Farming, recovery and final cleanup remain required for saved-spin qualification."
+  ],
+  "native_saved_rate_qualified": false
+}
