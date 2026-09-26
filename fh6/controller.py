@@ -50,8 +50,19 @@ class Controller:
             stream.close()
             self.background = None
         try:
+            from .cleanup_removal_journal import RemovalJournal
+            cleanup = GarageCleanup(nav, self.analytics, emit=emit)
+            had_pending = RemovalJournal(self.analytics).read() is not None
+            recovered = cleanup.recover_pending_removal()
+            if had_pending:
+                garage = {'garage_grid', 'car_action', 'remove_confirmation',
+                          'manufacturers', 'no_cars'}
+                start = nav.wait(garage | {'collection_grid', 'cars', 'campaign',
+                                         'home_tab', 'pause_menu'})
+                if start.screen in garage:
+                    cleanup.return_to_grid()
             prepare_filter(nav)
-            return GarageCleanup(nav, self.analytics, emit=emit).run(reset_filter_state=True)
+            return recovered + cleanup.run(reset_filter_state=True)
         finally:
             if stream:
                 self.background = BackgroundStream()

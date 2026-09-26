@@ -1,6 +1,7 @@
 """Local mission measurements and display-only forecasts; never authorize spending."""
 import json
 import math
+import os
 import time
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -63,10 +64,13 @@ class Tracker:
             except (OSError, ValueError, TypeError):
                 pass
 
-    def append(self, name, row):
+    def append(self, name, row, *, durable=False):
         self.root.mkdir(parents=True, exist_ok=True)
         with (self.root/name).open('a', encoding='utf-8') as file:
             file.write(json.dumps(row)+'\n')
+            if durable:
+                file.flush()
+                os.fsync(file.fileno())
 
     def close_span(self, success):
         if self.span:
@@ -87,6 +91,17 @@ class Tracker:
                         'boundary_started','boundary_completed',
                         'garage_cleanup_started','garage_removed','garage_duplicates_disabled','garage_cleanup_completed'}:
             return
+        if kind == 'garage_removed' and isinstance(value, dict) and value.get('operation_id'):
+            if not hasattr(self, '_removal_operations'):
+                self._removal_operations = set()
+                journal = self.root/'analytics_garage_cleanup.jsonl'
+                if journal.exists():
+                    for line in journal.read_text(encoding='utf-8').splitlines():
+                        row = json.loads(line)
+                        if row.get('operation_id'):
+                            self._removal_operations.add(row['operation_id'])
+            if value['operation_id'] in self._removal_operations:
+                return
         now = self.clock() if event_time is None else event_time
         seconds = self.data.setdefault('seconds', {})
         if self.category != 'idle':
@@ -122,15 +137,19 @@ class Tracker:
             cleanup = self.data.setdefault('garage_cleanup', {})
             amount = value.get('count', 1) if isinstance(value, dict) else 1
             amount = amount if type(amount) is int and amount > 0 else 1
-            cleanup['removed'] = cleanup.get('removed', 0) + amount
-            cleanup.update(active=True, last_removed_at=datetime.now().isoformat(timespec='seconds'))
-            recent = cleanup.setdefault('recent_removed_at', [])
-            recent.append(cleanup['last_removed_at'])
-            cleanup['recent_removed_at'] = recent[-40:]
-            detail = {'garage_cleanup': 'removed', 'removed': cleanup['removed'], 'count': amount}
+            total = cleanup.get('removed', 0) + amount
+            stamp = datetime.now().isoformat(timespec='seconds')
             self.append('analytics_garage_cleanup.jsonl',
-                        {'at': cleanup['last_removed_at'], 'goal_id': self.data.get('goal_id'),
-                         'count': amount, 'removed_total': cleanup['removed']})
+                        {'at': stamp, 'goal_id': self.data.get('goal_id'),
+                         'count': amount, 'removed_total': total,
+                         **({'operation_id': value['operation_id']} if isinstance(value, dict) and value.get('operation_id') else {})}, durable=True)
+            if isinstance(value, dict) and value.get('operation_id'):
+                self._removal_operations.add(value['operation_id'])
+            cleanup.update(removed=total, active=True, last_removed_at=stamp)
+            recent = cleanup.setdefault('recent_removed_at', [])
+            recent.append(stamp)
+            cleanup['recent_removed_at'] = recent[-40:]
+            detail = {'garage_cleanup': 'removed', 'removed': total, 'count': amount}
         elif kind == 'garage_duplicates_disabled':
             cleanup = self.data.setdefault('garage_cleanup', {})
             cleanup.update(active=True, duplicates_disabled=True,

@@ -1,0 +1,14 @@
+{
+  "date": "2026-09-26",
+  "funded_cars": 33,
+  "completed_purchases": 33,
+  "completed_rewards": 33,
+  "verified_removals": 33,
+  "unique_removal_operations": 33,
+  "consecutive_aggregate_counts": true,
+  "all_outcomes_acknowledged_and_journaled": true,
+  "pending_operation_remaining": false,
+  "filtered_manufacturer_index_empty_for_mazda": true,
+  "cleanup_wall_seconds": 194.197,
+  "scope": "One complete live batch; does not test every crash cut point or establish saved-SW/hour qualification."
+}

@@ -146,6 +146,33 @@ class GarageCleanup:
     def __init__(self, nav, tracker, emit=lambda *args: None):
         self.nav, self.tracker, self.emit = nav, tracker, emit
 
+    def recover_pending_removal(self):
+        """Reconcile before any Escape/filter input; unresolved is never a count."""
+        from .cleanup_removal_journal import RemovalJournal, identity
+        journal = RemovalJournal(self.tracker)
+        row = journal.read()
+        if row is None:
+            return 0
+        if row.get('goal_id') != self.tracker.data.get('goal_id'):
+            journal.finish(row, 'unresolved_goal_changed')
+            return 0
+        if row.get('state') == 'acknowledged':
+            return journal.commit(row)
+        if row.get('state') not in {'prepared', 'submitted'} or row.get('game_identity') != identity(self.nav):
+            journal.finish(row, 'unresolved_submission_or_process')
+            return 0
+        try:
+            wait_after_removal_yes(self.nav)
+        except RuntimeError as exc:
+            if str(exc) != 'Timed out waiting for garage_grid; no input retry':
+                raise
+            # A still-visible confirmation cannot establish removal. Preserve
+            # the unresolved attempt; normal fresh No cancellation may proceed.
+            journal.finish(row, 'unresolved_acknowledgement_timeout')
+            return 0
+        journal.acknowledged(row, self.nav)
+        return journal.commit(row)
+
     def return_to_grid(self):
         """Cancel a saved No/action checkpoint without confirming removal."""
         obs=self.nav.wait({'garage_grid','car_action','remove_confirmation','manufacturers','no_cars'})
@@ -301,6 +328,9 @@ class GarageCleanup:
                         ready = visual_gate(self.nav, 'remove_confirmation', 'yes_selected', timeout=.4)
                     else:
                         ready = pulse_to_focus(self.nav, confirmation, 'No', 'Yes', 1)
+                    from .cleanup_removal_journal import RemovalJournal
+                    removal_journal = RemovalJournal(self.tracker)
+                    removal_operation = removal_journal.begin(self.nav)
                     if ready:
                         self.nav.key('enter')
                     else:
@@ -308,10 +338,12 @@ class GarageCleanup:
                             confirmation = self.nav.wait('remove_confirmation', predicate=complete_confirmation,
                                                          stable_frames=1)
                         self.nav.keyboard_select('remove_confirmation', 'Yes')
+                    removal_journal.submitted(removal_operation)
                     obs = wait_after_removal_yes(self.nav)
+                    removal_journal.acknowledged(removal_operation, self.nav)
                     break
                 removed += 1
-                self.tracker.event('garage_removed', {'count': 1})
+                removal_journal.commit(removal_operation)
                 if removed == 1 or removed % 5 == 0:
                     self.emit('status', f'Garage cleanup: {removed} Mad Mike duplicates removed')
                 update_panel(self.tracker, f'Garage cleanup running · {self.tracker.data["garage_cleanup"]["removed"]:,} removed')
