@@ -14,7 +14,7 @@ def current_farm_car(nav, obs, profile):
 
 
 def select_from_pause(nav, profile):
-    """False only before inputs when this is not a pause-menu route."""
+    """False requests the existing Home route; never infer current car from a menu."""
     obs=nav.observe()
     if not pause_ready(nav,obs):
         return False
@@ -31,6 +31,18 @@ def select_from_pause(nav, profile):
         result=nav.until(lambda o:o.screen=='car_action' or nav.is_roam(o) or pause_ready(nav,o),
                          'favourite Subaru action or delivery')
         if result.screen=='car_action':
+            if not result.doc.has('Get In Car'):
+                # The already-current car exposes View/Remove actions but no
+                # delivery action. Cancel only; Home verifies its exact header.
+                from .farming import FOOTER
+                result=nav.wait('car_action', predicate=lambda o:
+                    len(o.doc.find('Select An Action')) == 1 and
+                    len(o.doc.find('Cancel', FOOTER)) == 1, stable_frames=2)
+                if not result.doc.has('Get In Car'):
+                    nav.key('esc')
+                    nav.wait('garage_grid', previous='car_action')
+                    nav.emit('log','Current-car action menu canceled; checking exact farm car through Home.')
+                    return False
             nav.click_label('car_action','Get In Car')
             result=nav.until(lambda o:nav.is_roam(o) or pause_ready(nav,o),
                              'Subaru delivered outside home',timeout=max(60,nav.timeout))

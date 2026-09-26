@@ -441,7 +441,6 @@ class FarmNavigator(Navigator):
                 # handoff; the normal garage route then rechecks car identity.
                 self.wait('car_action', predicate=lambda o:
                     len(o.doc.find('Select An Action')) == 1 and
-                    len(o.doc.find('Get In Car')) == 1 and
                     len(o.doc.find('Cancel', FOOTER)) == 1)
                 self.emit('log', 'Canceling the verified car-action dialog before rechecking the farm car.')
                 self.key('esc')
