@@ -18,6 +18,15 @@
     "full_wall_seconds_approx": 335,
     "median_inter_removal_seconds": 7
   },
+  "complete_reward_batch": {
+    "rewards": 33,
+    "previous_cleanup_end_to_cleanup_end_seconds_approx": 4570,
+    "reward_rate_per_hour_approx": 26.0,
+    "conversion_seconds": 2133,
+    "car_selection_seconds": 1005,
+    "includes_farming_conversion_cleanup": true,
+    "native_saved_rate_proof": false
+  },
   "saved_sw_rate_verified": false,
   "qualification": "Two adjacent windows of at least 100 new saved Super Wheelspins, including farming, conversion, and cleanup, are required."
 }
