@@ -45,6 +45,13 @@ def configuration(args, saved, goal=None):
     """An unfinished checkpoint always owns the original target and balance."""
     goal = goal or {}
     resume_id = getattr(args, 'resume_goal_id', '')
+    credit_floor = getattr(args, 'credit_floor', None)
+    cleanup_policy = getattr(args, 'cleanup_policy', None)
+    if cleanup_policy is not None and (args.mode != GOAL_MODE or cleanup_policy != 'final_only'):
+        raise ValueError('Final-only cleanup requires saved-Super-Wheelspin mode')
+    if credit_floor is not None:
+        if args.mode != GOAL_MODE or type(credit_floor) is not int or not 1 <= credit_floor <= 999_999_999:
+            raise ValueError('Credit floor requires saved-Super-Wheelspin mode and 1–999,999,999 CR')
     if resume_id:
         if args.mode != GOAL_MODE:
             raise ValueError('Automatic worker resume requires the wheelspin target mode')
@@ -103,7 +110,7 @@ def configuration(args, saved, goal=None):
     return dict(result, monitor=args.monitor, timeout=args.timeout, title='Forza Horizon 6',
                 steam_backup=args.mode == 'Open game' or bool(getattr(args, 'steam_backup', 1)),
                 max_restarts=restarts, game_priority=bool(getattr(args, 'game_priority', 1)),
-                resume_goal_id=resume_id)
+                resume_goal_id=resume_id, credit_floor=credit_floor, cleanup_policy=cleanup_policy)
 
 
 class Status:
@@ -334,6 +341,8 @@ def main(argv=None):
     parser.add_argument('--share-code', default='155439962')
     parser.add_argument('--challenge-seconds', type=int, default=900)
     parser.add_argument('--reserve', default='0')
+    parser.add_argument('--credit-floor', type=int, default=None, help='Stop before a purchase would spend below this CR reserve; finish the paid car and clean Mad Mike cars')
+    parser.add_argument('--cleanup-policy', choices=('final_only',), default=None, help='Defer Mad Mike cleanup until the saved credit floor stops production')
     parser.add_argument('--spin-type', choices=('SUPER', 'REGULAR'), default='SUPER')
     parser.add_argument('--dry-run', type=int, choices=(0, 1), default=1)
     parser.add_argument('--stop-on-unknown', type=int, choices=(0, 1), default=1)

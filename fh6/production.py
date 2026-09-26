@@ -23,6 +23,9 @@ class GoalSession(Session):
             if self.data.get('phase') != 'complete':
                 # GUI target is an estimate in this mode, not a completion gate.
                 super().start(MODE, self.data['limit'])
+                if self.data.get('cleanup_policy') == 'final_only':
+                    from .credit_stop_floor import configure_cleanup
+                    configure_cleanup(self)
             return
         target = whole_number(target, 'Super Wheelspin target')
         if not 1 <= target <= 10000:
@@ -81,6 +84,8 @@ class Production:
         proof = self.boundary('credit_check',lambda:
             self.credit_budgeter.budget(self.nav, self.goal.data, self.cars.data, self.ledger,
                                         force=force, full_header=full_header))
+        from .credit_stop_floor import apply as apply_credit_floor
+        proof = apply_credit_floor(self.goal.data, proof)
         self.goal.save(credit_budget=proof,
                        limit=self.goal.data['rewards'] + proof['affordable_purchases'])
         return proof
@@ -144,6 +149,25 @@ class Production:
         from .credit_limit import PRICE, SOURCE, CreditProofUnavailable, pending_copy
         self.nav.check()
         self.ledger.ready()
+        from .credit_stop_floor import floor_for, apply as apply_credit_floor
+        floor = floor_for(self.goal.data)
+        if floor is not None:
+            proof = apply_credit_floor(self.goal.data, proof)
+            if proof['affordable_purchases'] or pending_copy(self.cars.data, self.ledger):
+                raise RuntimeError('Credit floor shutdown requires the paid car to finish first')
+            # Projection is a purchase ceiling, not final native balance proof.
+            # A failed fresh read leaves the ceiling in force and no new work.
+            proof = self.credit_budget(force=True, full_header=True)
+            if proof.get('receipt_projection'):
+                raise CreditProofUnavailable('Fresh credit proof required before credit reserve shutdown')
+            if proof['affordable_purchases']:
+                return
+            self.goal.save(phase='garage_cleanup', completed=self.goal.data['rewards'],
+                           end_reason='credit_stop_floor', credit_budget=proof,
+                           credit_stop_proof=proof, limit=self.goal.data['rewards'],
+                           batch=None, reservation=None, final_top_up=False)
+            self.emit('status', f'Credit reserve protected at {floor:,} CR; removing all Mad Mike cars before stopping')
+            return
         if (proof['observed_credits'] >= PRICE or proof['purchases_after_observation']
                 or pending_copy(self.cars.data, self.ledger)):
             raise RuntimeError('Credit exhaustion has not been confirmed; no completion inferred')
@@ -236,7 +260,8 @@ class Production:
             removed = self.boundary('terminal_garage_cleanup', lambda:
                 GarageCleanup(self.nav, Tracker(), emit=self.emit).run(reset_filter_state=True))
         self.goal.save(phase='complete', completed=self.goal.data['rewards'])
-        self.emit('status', f'Credit limit reached; garage verified empty after removing {removed:,} Mad Mike cars in the final pass')
+        reason = 'Credit reserve protected' if self.goal.data.get('end_reason') == 'credit_stop_floor' else 'Credit limit reached'
+        self.emit('status', f'{reason}; garage verified empty after removing {removed:,} Mad Mike cars in the final pass')
         self.progress()
 
     def cleanup_periodic(self):
@@ -359,14 +384,25 @@ class Production:
         if type(car_interval) is int and car_interval > 0:
             cleanup_due = (self.goal.data['rewards'] -
                 self.goal.data.get('cleanup_rewards_baseline', 0)) >= car_interval
+        if self.goal.data.get('cleanup_policy') == 'final_only':
+            cleanup_due = False
         self.goal.save(phase='periodic_cleanup' if cleanup_due else 'inspect_sp',
                        batches_since_cleanup=batches, batch=None,
                        completed=self.goal.data['rewards'])
+        from .credit_stop_floor import floor_for
+        if floor_for(self.goal.data) is not None:
+            # Recount committed receipts after this capped batch, before any farm.
+            proof = self.credit_budget()
+            unpaid_zero = not proof['affordable_purchases']
         if unpaid_zero:
             self.finish_credit_limit(proof)
 
     def run(self):
         g = self.goal
+        from .credit_stop_floor import floor_for
+        floor_for(g.data)
+        if g.data.get('phase') == 'complete' and g.data.get('end_reason') == 'credit_stop_floor':
+            return
         # A terminal SP challenge can award credits after the three low-credit
         # checks that started shutdown.  Reopening a completed credit mission
         # is allowed only after a fresh full-header proof shows that another
@@ -425,7 +461,8 @@ class Production:
                 # Its credit gate ran before launch; recheck before the next buy.
                 # A mastery-tree SP handoff also defers safely because no
                 # purchase can occur until convert() runs its fresh gate.
-                if not farm_in_progress and not intermediate_refill and not mastery_handoff:
+                if (not farm_in_progress and
+                        (floor_for(g.data) is not None or not intermediate_refill and not mastery_handoff)):
                     proof = self.credit_budget()
                     if not proof['affordable_purchases']:
                         self.finish_credit_limit(proof)

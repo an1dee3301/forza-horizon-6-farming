@@ -299,12 +299,19 @@ class Controller:
                                 session = GoalSession(core.BASE/'runs'/'goal.json')
                                 validate_resume(session.data, config.get('resume_goal_id'))
                                 session.start_goal(config['limit'], config.get('reserve_sp', 0))
+                                from .credit_stop_floor import configure as configure_credit_floor
+                                configure_credit_floor(session, config.get('credit_floor'),
+                                    account=getattr(nav.account_observer, 'gamertag', None))
+                                from .credit_stop_floor import configure_cleanup
+                                configure_cleanup(session, config.get('cleanup_policy'))
                                 nav.setup_checks.run_id = session.data['id']
                                 self.emit('activity', True)
                                 Production(nav, core.PurchaseLedger(), session, Session(),
                                              Challenge(nav, emit=self.emit), self.emit,
                                              terminal_cleaner=self.terminal_cleanup).run()
-                                self.emit('status', 'Credit limit reached — next Mazda is unaffordable; earned Super Wheelspins remain saved'
+                                self.emit('status', 'Credit reserve protected — Mad Mike cleanup complete; farming stopped'
+                                    if session.data.get('end_reason') == 'credit_stop_floor' else
+                                    'Credit limit reached — next Mazda is unaffordable; earned Super Wheelspins remain saved'
                                     if session.data.get('end_reason') == 'insufficient_credits' else
                                     'Target complete — Super Wheelspins earned and saved; Car Collection is ready')
                             elif config['mode'] == 'Farm SP only':
