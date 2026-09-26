@@ -68,6 +68,14 @@ def decision(points, target, farms, profile, *, reserve=0, early_exit_disabled=F
                   share_code=profile.share_code, reserve_sp=reserve)
     if early_exit_disabled and result.get('planned_exit') == 'target_top_up':
         if points-reserve < 21:
+            expected = result.get('expected_yield_sp')
+            margin = result.get('safety_margin_sp')
+            if (isinstance(expected, (int, float)) and isinstance(margin, (int, float))
+                    and expected + margin <= result.get('headroom_sp', 0)):
+                result.update(mode='bulk', planned_exit='natural_completion',
+                              planned_drive_seconds=profile.duration_seconds,
+                              reason='early_exit_unverified_full_yield_fits')
+                return result
             raise RuntimeError('A full refill would exceed SP headroom and early-exit retention is unverified')
         result.update(mode='convert', planned_exit='convert_existing', planned_drive_seconds=0,
                       reason='early_exit_unverified_convert_funded_balance')

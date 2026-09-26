@@ -1,6 +1,6 @@
-# FH6 Auto v2.2.0 — draft
+# FH6 Auto v2.2.0
 
-Prepared for the next release. This document does not announce a published tag or package. Final operational cleanup and release validation remain pending.
+Final operational cleanup completed at the configured credit floor. See the sanitized [final run report](docs/operations/final-run-20260927.md).
 
 ## Controls and reporting
 
@@ -10,6 +10,9 @@ Prepared for the next release. This document does not announce a published tag o
 - Reports batch wall time and native inventory proof status separately from active-time and stage measurements.
 
 ## Navigation and recovery
+
+- Recovers the verified Challenges empty-content notification without repeating acknowledgement inputs.
+- Corrects refill planning when a small remaining target still needs SP and a full natural run fits available capacity.
 
 - Uses fresh focus observations for fast mastery movement and selected return-menu confirmations, retaining ownership verification before advancing.
 - Uses a verified one-Up garage shortcut where the current Recently Added grid supports it.

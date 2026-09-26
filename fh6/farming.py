@@ -750,6 +750,8 @@ class FarmNavigator(Navigator):
 
     def search_challenge(self, profile):
         obs = self.observe()
+        from .challenge_empty_content import dismiss_empty_content
+        obs = dismiss_empty_content(self, obs)
         if obs.screen == 'challenge_browser':
             self.wait('challenge_browser')
             self.key('backspace')
