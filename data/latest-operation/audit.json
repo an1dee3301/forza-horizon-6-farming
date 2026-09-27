@@ -1,0 +1,51 @@
+{
+  "analytics_farms": {
+    "input_lines": 607,
+    "exact_duplicates_removed": 0,
+    "malformed_lines_excluded": 0,
+    "duplicate_run_keys_excluded": 0
+  },
+  "analytics_cycles": {
+    "input_lines": 6882,
+    "exact_duplicates_removed": 0,
+    "malformed_lines_excluded": 0,
+    "duplicate_cycle_keys_excluded": 0
+  },
+  "analytics_garage_cleanup": {
+    "input_lines": 6540,
+    "exact_duplicates_removed": 0,
+    "malformed_lines_excluded": 0
+  },
+  "inventory_proofs": {
+    "input_lines": 94,
+    "exact_duplicates_removed": 0,
+    "malformed_lines_excluded": 0
+  },
+  "analytics_events": {
+    "input_lines": 87717,
+    "exact_duplicates_removed": 72,
+    "malformed_lines_excluded": 0
+  },
+  "analytics_failures": {
+    "input_lines": 3997,
+    "exact_duplicates_removed": 0,
+    "malformed_lines_excluded": 0
+  },
+  "cycle_outliers": {
+    "method": "upper Tukey fence, retained",
+    "threshold_seconds": 77.042,
+    "count": 26
+  },
+  "coverage": {
+    "farm_records": 67,
+    "goal_farm_counter": 68,
+    "cycle_records": 796,
+    "goal_completed_counter": 796,
+    "missing_cycle_records_vs_counter": 0,
+    "partial_timing_farms": 12,
+    "capped_farms": 0,
+    "failure_records_time_scoped": 561,
+    "native_proofs_available": 67,
+    "native_proofs_used_for_final_interval": 2
+  }
+}

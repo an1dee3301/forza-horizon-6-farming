@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="276" viewBox="0 0 1000 276" role="img" aria-label="Saved Super Wheelspins: measured result">
+<rect width="1000" height="276" rx="18" fill="#101722"/>
+<g font-family="Arial,sans-serif" fill="#edf2fa">
+<text x="36" y="48" font-size="26" font-weight="700">Saved Super Wheelspins: measured result</text>
+<text x="36" y="78" fill="#a6b3c5" font-size="14">Final native-to-native interval includes conversion, recovery, idle time and final cleanup.</text>
+<text x="36" y="140" font-size="15">Observed interval</text>
+<rect x="265" y="120" width="476.93" height="28" rx="5" fill="#40bda2"/>
+<text x="756.93" y="140" font-size="14">28.1 SW/h</text>
+<text x="36" y="188" font-size="15">Requested target</text>
+<rect x="265" y="168" width="560.00" height="28" rx="5" fill="#40bda2"/>
+<text x="840.00" y="188" font-size="14">33.0 SW/h</text>
+</g></svg>

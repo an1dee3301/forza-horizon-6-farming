@@ -1,7 +1,7 @@
-; Local control panel. All game recognition and inputs live in the Python worker.
+﻿; Local control panel. All game recognition and inputs live in the Python worker.
 ; Closing this panel requests a stop; the worker also watches its parent's PID.
 class LocalPanel {
-    __New(testMode := false, wheelspinTrial := 0) {
+    __New(testMode := false, wheelspinTrial := 0, previewMode := false) {
         this.pid := 0
         this.watchdog := MissionWatchdog()
         this.channel := ""
@@ -15,12 +15,13 @@ class LocalPanel {
         this.challengeSeconds := 900
         this.closing := false
         this.testMode := testMode
+        this.previewMode := previewMode
         this.errorImage := ""
         this.mutex := 0
         this.workspace := A_ScriptDir "\.."
         this.python := this.workspace "\.venv\Scripts\pythonw.exe"
         this.bridge := A_ScriptDir "\Runtime\bridge.py"
-        if !testMode {
+        if !testMode && !previewMode {
             this.mutex := DllCall("CreateMutexW", "Ptr", 0, "Int", 0, "Str", "Local\FH6AutoDashboard", "Ptr")
             if !this.mutex || A_LastError = 183 {
                 MsgBox("An FH6 Auto panel is already open. Use that panel or close it first.", "FH6 Auto")
@@ -28,6 +29,13 @@ class LocalPanel {
             }
         }
         this.Build()
+        if previewMode {
+            this.RefreshPlan()
+            this.status.Value := "Preview only. No game connection or worker is running."
+            this.runState.Value := "PREVIEW"
+            this.gui.OnEvent("Close", (*) => ExitApp())
+            return
+        }
         this.timer := ObjBindMethod(this, "Poll")
         if testMode {
             this.SelfTest()
@@ -44,147 +52,157 @@ class LocalPanel {
     }
 
     Build() {
-        this.gui := Gui("-MaximizeBox", "HORIZON JAPAN // MISSION CONTROL")
-        ; FH6's interface is built from hard rectangular layers, a white tab rail,
-        ; high-chroma status accents and a lime focus outline.  This keeps that
-        ; visual grammar while using a Tokyo-at-night palette.
-        this.gui.BackColor := "070B10"
-        this.gui.AddProgress("x0 y0 w432 h7 c00C7A3 Background00C7A3 Range0-1", 1)
-        this.gui.AddProgress("x432 y0 w220 h7 cE6007E BackgroundE6007E Range0-1", 1)
-        this.gui.AddProgress("x652 y0 w96 h7 cC8FF00 BackgroundC8FF00 Range0-1", 1)
-        this.gui.AddProgress("x0 y7 w748 h2 c18232B Background18232B Range0-1", 1)
-        this.gui.SetFont("s8 c8FA0AA Bold", "Yu Gothic UI")
-        this.gui.AddText("x24 y18 w240 h18", "ホライゾン・ジャパン  /  東京")
-        this.gui.SetFont("s22 cF7FAFC Bold", "Bahnschrift SemiCondensed")
-        this.gui.AddText("x24 y34 w700 h36", "MISSION CONTROL")
-        this.gui.SetFont("s9 c00D7B3 Bold", "Bahnschrift")
-        this.gui.AddText("x26 y72 w220 h20", "FH6 // OPERATIONS")
-        this.gui.SetFont("s9 cA3B1B8", "Bahnschrift")
-        this.gui.AddText("x250 y72 w474 h20 Right", "SAVED SW MISSION  •  21 SP / CAR  •  F6 RUN  •  F7 STOP")
-        this.gui.AddProgress("x24 y99 w700 h3 cC8FF00 Background18232B Range0-1", 1)
-        this.tabs := this.gui.AddTab3("x24 y108 w700 h435 +Buttons Background101820 cF7FAFC", ["MISSION  任務", "LIVE  稼働", "RECOVERY  復旧", "HISTORY  履歴", "MODULES  機能", "DATA  分析"])
+        this.gui := Gui("-MaximizeBox", "FH6 Auto — Workspace")
+        this.gui.BackColor := "0F1219"
+        this.gui.SetFont("s10 cE6EAF2 Norm", "Segoe UI")
+        ; A quiet navigation rail and a fixed content grid keep every workspace
+        ; predictable. No placeholder values are presented as live measurements.
+        this.gui.AddText("x0 y0 w196 h770 Background151A24", "")
+        this.gui.AddProgress("x195 y0 w1 h770 c273043 Background273043 Range0-1", 1)
+        this.gui.SetFont("s21 cF4F6FB Bold", "Segoe UI")
+        this.gui.AddText("x24 y28 w155 h40 BackgroundTrans", "FH6 Auto")
+        this.gui.SetFont("s9 c92A0B8 Norm")
+        this.gui.AddText("x25 y74 w148 h42 BackgroundTrans", "Your local farming`nworkspace")
+        this.gui.AddProgress("x24 y130 w148 h1 c2B3445 Background2B3445 Range0-1", 1)
+        this.gui.SetFont("s9 cA8B7D0 Bold")
+        this.gui.AddText("x24 y151 w148 h20 BackgroundTrans", "WORKFLOW")
+        this.gui.SetFont("s10 cCBD4E4 Norm")
+        this.gui.AddText("x24 y184 w148 h130 BackgroundTrans", "01   Set a mission`n`n02   Track activity`n`n03   Review results")
+        this.gui.SetFont("s9 c92A0B8 Norm")
+        this.gui.AddText("x24 y353 w148 h95 BackgroundTrans", "Saved progress`nResume the current car`nfrom its checkpoint.")
+        this.gui.AddProgress("x24 y619 w148 h1 c2B3445 Background2B3445 Range0-1", 1)
+        this.gui.SetFont("s9 c92A0B8 Norm")
+        this.gui.AddText("x24 y642 w148 h80 BackgroundTrans", "KEYBOARD`n`nF6   Start / resume`nF7   Request stop")
+        this.gui.SetFont("s24 cF4F6FB Bold")
+        this.gui.AddText("x220 y28 w756 h43", "Mission workspace")
+        this.gui.SetFont("s10 c92A0B8 Norm")
+        this.gui.AddText("x222 y79 w750 h24", "Plan your run, follow saved progress and explore measured performance.")
+        this.tabs := this.gui.AddTab3("x220 y126 w756 h462 Background151A24 cF4F6FB", ["  Mission  ", "  Activity  ", "  Recovery  ", "  History  ", "  Tools  ", "  Analytics  "])
         this.tabs.UseTab(1)
-        this.gui.SetFont("s10 cF4FBFB")
-        this.gui.AddText("x46 y162 w160", "Run mode")
-        this.mode := this.gui.AddDropDownList("x220 y156 w470 Choose1", ["Earn saved Super Wheelspins", "Wheelspin Lab", "Full pipeline", "Buy only", "Mastery only", "Recognition only", "Farm SP only", "Return to collection", "Check farm setup", "Open game"])
+        this.gui.SetFont("s10 cE6EAF2 Norm")
+        this.gui.AddText("x244 y180 w173", "Run mode")
+        this.mode := this.gui.AddDropDownList("x432 y174 w508 Choose1", ["Earn saved Super Wheelspins", "Wheelspin Lab", "Full pipeline", "Buy only", "Mastery only", "Recognition only", "Farm SP only", "Return to collection", "Check farm setup", "Open game"])
         this.mode.OnEvent("Change", ObjBindMethod(this, "RefreshPlan"))
-        this.quantityLabel := this.gui.AddText("x46 y217 w160", "Super Wheelspins")
-        this.points := this.gui.AddEdit("x220 y210 w180 h32 Border Background111B23 cFFFFFF Number", "10")
-        this.gui.AddText("x46 y268 w160", "SP to keep")
-        this.reserve := this.gui.AddEdit("x220 y260 w180 h32 Border Background111B23 cFFFFFF Number", "0")
-        this.gui.AddText("x430 y217 w90", "Spin type")
-        this.spinType := this.gui.AddDropDownList("x520 y210 w170 Choose1", ["SUPER", "REGULAR"])
-        this.dryRun := this.gui.AddCheckbox("x430 y260 w120 h28 Checked cF4FBFB", "Dry Run")
-        this.stopUnknown := this.gui.AddCheckbox("x555 y260 w145 h28 Checked cF4FBFB", "Stop on unknown")
+        this.quantityLabel := this.gui.AddText("x244 y235 w173", "Super Wheelspins")
+        this.points := this.gui.AddEdit("x432 y228 w194 h32 Border Background1C2330 cFFFFFF Number", "10")
+        this.gui.AddText("x244 y286 w173", "SP to keep")
+        this.reserve := this.gui.AddEdit("x432 y278 w194 h32 Border Background1C2330 cFFFFFF Number", "0")
+        this.gui.AddText("x658 y235 w97", "Spin type")
+        this.spinType := this.gui.AddDropDownList("x756 y228 w184 Choose1", ["SUPER", "REGULAR"])
+        this.dryRun := this.gui.AddCheckbox("x658 y278 w130 h28 Checked cE6EAF2", "Dry Run")
+        this.stopUnknown := this.gui.AddCheckbox("x793 y278 w157 h28 Checked cE6EAF2", "Stop on unknown")
         this.spinType.OnEvent("Change", ObjBindMethod(this, "RefreshPlan"))
         this.dryRun.OnEvent("Click", ObjBindMethod(this, "RefreshPlan"))
         this.stopUnknown.OnEvent("Click", ObjBindMethod(this, "RefreshPlan"))
         this.points.OnEvent("Change", ObjBindMethod(this, "RefreshPlan"))
         this.reserve.OnEvent("Change", ObjBindMethod(this, "RefreshPlan"))
-        this.gui.SetFont("s13 cC8FF00", "Bahnschrift")
-        this.plan := this.gui.AddText("x46 y315 w650 h66", "Enter your current skill points.")
-        this.gui.SetFont("s10 c83A8B0", "Bahnschrift")
-        this.gui.AddText("x46 y389 w160", "Credits to keep (CR)")
-        this.creditFloor := this.gui.AddEdit("x220 y382 w180 h32 Border Background111B23 cFFFFFF Number", "")
-        this.cleanupPolicy := this.gui.AddDropDownList("x430 y383 w260 Choose1", ["Keep saved / default cleanup", "Final cleanup only"])
-        this.savedCreditPolicy := this.gui.AddText("x46 y420 w650 h34", "Optional reserve: blank keeps the saved setting. No reserve by default.")
-        this.gui.AddText("x46 y468 w130", "Game monitor")
-        this.monitor := this.gui.AddEdit("x185 y461 w75 h30 Number Border Background111B23 cFFFFFF", "1")
-        this.gui.AddText("x322 y468 w150", "Screen timeout (sec)")
-        this.timeout := this.gui.AddEdit("x489 y461 w75 h30 Number Border Background111B23 cFFFFFF", "30")
+        this.gui.SetFont("s13 c9AB8FF Norm", "Segoe UI")
+        this.plan := this.gui.AddText("x244 y333 w702 h66", "Enter your current skill points.")
+        this.gui.SetFont("s10 c92A0B8 Norm", "Segoe UI")
+        this.gui.AddText("x244 y407 w173", "Credits to keep (CR)")
+        this.creditFloor := this.gui.AddEdit("x432 y400 w194 h32 Border Background1C2330 cFFFFFF Number", "")
+        this.cleanupPolicy := this.gui.AddDropDownList("x658 y401 w281 Choose1", ["Keep saved / default cleanup", "Final cleanup only"])
+        this.savedCreditPolicy := this.gui.AddText("x244 y438 w702 h34", "Optional reserve: blank keeps the saved setting. No reserve by default.")
+        this.gui.AddText("x244 y486 w140", "Game monitor")
+        this.monitor := this.gui.AddEdit("x394 y479 w81 h30 Number Border Background1C2330 cFFFFFF", "1")
+        this.gui.AddText("x542 y486 w162", "Screen timeout (sec)")
+        this.timeout := this.gui.AddEdit("x722 y479 w81 h30 Number Border Background1C2330 cFFFFFF", "30")
         this.tabs.UseTab(2)
         ; Keep the main production counters visible while the detailed report scrolls.
         this.liveLabels := []
         this.liveValues := []
-        for index, name in ["MISSION NEW", "CARS PROCESSED", "GARAGE LEFT", "FARM RUNS"] {
-            x := 46 + (index - 1) * 165
-            this.gui.AddText("x" x " y157 w155 h68 Background101820", "")
-            this.gui.AddProgress("x" x " y157 w155 h3 c00C7A3 Background00C7A3 Range0-1", 1)
-            this.gui.SetFont("s8 c8FA0AA Bold", "Bahnschrift")
-            this.liveLabels.Push(this.gui.AddText("x" (x + 10) " y168 w137 h17 BackgroundTrans", name))
-            this.gui.SetFont("s19 cF7FAFC Bold", "Bahnschrift SemiCondensed")
-            this.liveValues.Push(this.gui.AddText("x" (x + 10) " y184 w137 h32 BackgroundTrans", "—"))
+        for index, name in ["NEW REWARDS", "CARS COMPLETE", "GARAGE QUEUE", "FARM RUNS"] {
+            x := 244 + (index - 1) * 178
+            this.gui.AddText("x" x " y175 w166 h76 Background151A24", "")
+            this.gui.AddProgress("x" x " y175 w166 h2 c4776E6 Background4776E6 Range0-1", 1)
+            this.gui.SetFont("s8 c92A0B8 Bold", "Segoe UI")
+            this.liveLabels.Push(this.gui.AddText("x" (x + 10) " y187 w146 h17 BackgroundTrans", name))
+            this.gui.SetFont("s19 cF4F6FB Bold", "Segoe UI")
+            this.liveValues.Push(this.gui.AddText("x" (x + 10) " y207 w146 h32 BackgroundTrans", "—"))
         }
-        this.gui.SetFont("s9 cF4FBFB", "Consolas")
-        this.stats := this.gui.AddEdit("x46 y236 w650 h124 ReadOnly Multi VScroll Border Background0C131A cF4FBFB", "No run started.")
-        this.bar := this.gui.AddProgress("x46 y374 w650 h12 cC8FF00 Background18232B Range0-100", 0)
-        this.gui.SetFont("s11 cC8FF00")
-        this.inventorySummary := this.gui.AddText("x46 y398 w650 h25", "SAVED SW / WS: awaiting live game read")
-        this.gui.SetFont("s8 c83A8B0")
-        this.inventoryTimestamp := this.gui.AddText("x46 y425 w650 h19", "Inventory comes only from My Horizon")
-        this.gui.SetFont("s11 cC8FF00")
-        this.stage := this.gui.AddText("x46 y448 w650 h25 +0x80", "Waiting")
-        this.gui.SetFont("s9 c83A8B0")
-        this.gui.AddText("x46 y477 w650 h42", "SP is read from the game; ≤ marks an unfinished tree.`nCloud sync blocks every input and restart until verified.")
+        this.gui.SetFont("s9 cE6EAF2 Norm", "Consolas")
+        this.stats := this.gui.AddEdit("x244 y254 w702 h124 ReadOnly Multi VScroll Border Background121722 cE6EAF2", "No run started.")
+        this.bar := this.gui.AddProgress("x244 y392 w702 h12 c9AB8FF Background273043 Range0-100", 0)
+        this.gui.SetFont("s11 c9AB8FF Norm")
+        this.inventorySummary := this.gui.AddText("x244 y416 w702 h25", "Saved inventory · awaiting a game reading")
+        this.gui.SetFont("s8 c92A0B8 Norm")
+        this.inventoryTimestamp := this.gui.AddText("x244 y443 w702 h19", "Source: My Horizon · no estimated inventory")
+        this.gui.SetFont("s11 c9AB8FF Norm")
+        this.stage := this.gui.AddText("x244 y466 w702 h25 +0x280", "Waiting")
+        this.gui.SetFont("s9 c92A0B8 Norm")
+        this.gui.AddText("x244 y495 w702 h42", "SP is read from the game; ≤ marks an unfinished tree.`nInventory and session details update when a worker reports them.")
         this.tabs.UseTab(3)
-        this.gui.SetFont("s10 cF4FBFB")
-        this.AddButton("x46 y165 w290 h38", "Open logs", (*) => Run(this.Q(this.workspace "\runs")))
-        this.AddButton("x358 y165 w290 h38", "Error screenshot", ObjBindMethod(this, "OpenError"))
-        this.endButton := this.AddButton("x46 y229 w290 h38", "End saved session…", ObjBindMethod(this, "EndSession"))
-        this.resolveButton := this.AddButton("x358 y229 w290 h38", "Resolve uncertain purchase…", ObjBindMethod(this, "Resolve"))
-        this.AddButton("x46 y277 w290 h34", "Confirm completed cloud sync…", ObjBindMethod(this, "ConfirmSync"))
-        this.gui.AddText("x358 y284 w320 h27", "No offline mode and no timed bypass.")
-        this.gui.SetFont("s10 c83A8B0")
-        this.gui.AddText("x46 y318 w650 h133", "Resume keeps the original car target and the current stage.`nLeave the selected car unchanged after a stop.`n`nAn uncertain purchase blocks buying until its receipt is verified or you record the outcome.`n`nPurchased cars remain in the garage. An owned Super Wheelspin node completes the reward check.")
-        this.steamBackup := this.gui.AddCheckbox("x46 y464 w455 h25 Checked cF4FBFB", "Open through Steam and restart after crashes")
-        this.gui.AddText("x46 y501 w290 h22", "Crash limit (0 = unlimited, up to 10)")
-        this.maxRestarts := this.gui.AddEdit("x358 y495 w75 h29 Number Border Background111B23 cFFFFFF", "0")
-        this.gamePriority := this.gui.AddCheckbox("x462 y497 w220 h25 Checked cF4FBFB", "Prioritize game focus")
+        this.gui.SetFont("s10 cE6EAF2 Norm")
+        this.AddButton("x244 y183 w313 h38", "Open logs", (*) => Run(this.Q(this.workspace "\runs")))
+        this.AddButton("x581 y183 w313 h38", "Error screenshot", ObjBindMethod(this, "OpenError"))
+        this.endButton := this.AddButton("x244 y247 w313 h38", "End saved session…", ObjBindMethod(this, "EndSession"))
+        this.resolveButton := this.AddButton("x581 y247 w313 h38", "Resolve uncertain purchase…", ObjBindMethod(this, "Resolve"))
+        this.AddButton("x244 y295 w313 h34", "Confirm completed cloud sync…", ObjBindMethod(this, "ConfirmSync"))
+        this.gui.AddText("x581 y302 w346 h27", "Resume from the last saved checkpoint.")
+        this.gui.SetFont("s10 c92A0B8 Norm")
+        this.gui.AddText("x244 y336 w702 h133", "Resume keeps the original car target and the current stage.`nLeave the selected car unchanged after a stop.`n`nAn uncertain purchase blocks buying until its receipt is verified or you record the outcome.`n`nPurchased cars remain in the garage. An owned Super Wheelspin node completes the reward check.")
+        this.steamBackup := this.gui.AddCheckbox("x244 y482 w491 h25 Checked cE6EAF2", "Open through Steam and restart after crashes")
+        this.gui.AddText("x244 y519 w313 h22", "Crash limit (0 = unlimited, up to 10)")
+        this.maxRestarts := this.gui.AddEdit("x581 y513 w81 h29 Number Border Background1C2330 cFFFFFF", "0")
+        this.gamePriority := this.gui.AddCheckbox("x693 y515 w238 h25 Checked cE6EAF2", "Prioritize game focus")
         this.tabs.UseTab(4)
-        this.gui.SetFont("s10 cF4FBFB")
-        this.history := this.gui.AddEdit("x46 y166 w650 h332 ReadOnly Multi Border Background0C131A cF4FBFB", "Loading history…")
+        this.gui.SetFont("s10 cE6EAF2 Norm")
+        this.history := this.gui.AddEdit("x244 y184 w702 h332 ReadOnly Multi Border Background121722 cE6EAF2", "Loading history…")
         this.tabs.UseTab(5)
-        this.gui.SetFont("s10 cF4FBFB")
-        this.gui.AddText("x46 y158 w650 h50", "Mega Farm V6  •  155439962  •  about 15 minutes per run`nUse a fully upgraded 1998 Subaru 22B with completed mastery.")
-        this.AddButton("x46 y220 w290 h36", "Check Mega V6 settings", (*) => this.SelectModule("Check farm setup"))
-        this.AddButton("x358 y220 w290 h36", "Farm SP only", (*) => this.SelectModule("Farm SP only"))
-        this.AddButton("x46 y270 w290 h36", "Buy cars from current SP", (*) => this.SelectModule("Buy only"))
-        this.AddButton("x358 y270 w290 h36", "Claim current mastery tree", (*) => this.SelectModule("Mastery only"))
-        this.AddButton("x46 y320 w290 h36", "Return to Car Collection", (*) => this.SelectModule("Return to collection"))
-        this.AddButton("x358 y320 w290 h36", "Recognition without inputs", (*) => this.SelectModule("Recognition only"))
-        this.AddButton("x46 y370 w290 h36", "Challenge profile", ObjBindMethod(this, "EditProfile"))
-        this.AddButton("x358 y370 w290 h36", "Module guide / repo features", (*) => Run(this.Q(this.workspace "\MODULES.md")))
-        this.gui.SetFont("s9 c83A8B0")
-        this.AddButton("x46 y417 w290 h36", "Open game through Steam", (*) => this.SelectModule("Open game"))
-        this.AddButton("x358 y417 w290 h36", "Discord reports", (*) => this.DiscordReports("--settings"))
-        this.gui.AddText("x46 y469 w650 h52", "Mega V6: automatic steering/braking OFF; Skills HUD OFF.`nThe program checks SP after farming. The advertised yield is not guaranteed.`nChallenge navigation is being validated; an unrecognized screen stops the run.")
+        this.gui.SetFont("s10 cE6EAF2 Norm")
+        this.gui.AddText("x244 y176 w702 h50", "Mega Farm V6  •  155439962  •  about 15 minutes per run`nUse a fully upgraded 1998 Subaru 22B with completed mastery.")
+        this.AddButton("x244 y238 w313 h36", "Check Mega V6 settings", (*) => this.SelectModule("Check farm setup"))
+        this.AddButton("x581 y238 w313 h36", "Farm SP only", (*) => this.SelectModule("Farm SP only"))
+        this.AddButton("x244 y288 w313 h36", "Buy cars from current SP", (*) => this.SelectModule("Buy only"))
+        this.AddButton("x581 y288 w313 h36", "Claim current mastery tree", (*) => this.SelectModule("Mastery only"))
+        this.AddButton("x244 y338 w313 h36", "Return to Car Collection", (*) => this.SelectModule("Return to collection"))
+        this.AddButton("x581 y338 w313 h36", "Recognition without inputs", (*) => this.SelectModule("Recognition only"))
+        this.AddButton("x244 y388 w313 h36", "Challenge profile", ObjBindMethod(this, "EditProfile"))
+        this.AddButton("x581 y388 w313 h36", "Module guide / repo features", (*) => Run(this.Q(this.workspace "\MODULES.md")))
+        this.gui.SetFont("s9 c92A0B8 Norm")
+        this.AddButton("x244 y435 w313 h36", "Open game through Steam", (*) => this.SelectModule("Open game"))
+        this.AddButton("x581 y435 w313 h36", "Discord reports", (*) => this.DiscordReports("--settings"))
+        this.gui.AddText("x244 y487 w702 h52", "Mega V6: automatic steering/braking OFF; Skills HUD OFF.`nThe program checks SP after farming. The advertised yield is not guaranteed.`nChallenge navigation is being validated; an unrecognized screen stops the run.")
         this.tabs.UseTab(6)
-        this.gui.SetFont("s10 cF4FBFB", "Bahnschrift")
-        this.analyticsHeader := this.gui.AddText("x46 y158 w650 h78", "Collecting mission measurements…")
-        this.analyticsChoice := this.gui.AddDropDownList("x46 y244 w300 Choose5", ["Car cycles", "Farm runs", "Batch SP refills", "Stage P50 / P90 / P99", "Throughput / mission", "Failure causes / cost", "Transition latency", "Time attribution", "Wheelspin exclusives", "Wheelspin keeps"])
+        this.gui.SetFont("s10 cE6EAF2 Norm", "Segoe UI")
+        this.analyticsHeader := this.gui.AddText("x244 y176 w702 h78", "Run measurements appear here when available.")
+        this.analyticsChoice := this.gui.AddDropDownList("x244 y262 w324 Choose5", ["Car cycles", "Farm runs", "Batch SP refills", "Stage P50 / P90 / P99", "Throughput / mission", "Failure causes / cost", "Transition latency", "Time attribution", "Wheelspin exclusives", "Wheelspin keeps"])
         this.analyticsChoice.OnEvent("Change", ObjBindMethod(this, "RefreshAnalytics"))
-        this.analyticsGrid := this.gui.AddListView("x46 y283 w650 h174 Background0C131A cF4FBFB Grid", ["Step", "Mean s", "Median s", "Min s", "Max s", "Samples", ""])
+        this.analyticsGrid := this.gui.AddListView("x244 y301 w702 h174 Background121722 cE6EAF2 ", ["Step", "Mean s", "Median s", "Min s", "Max s", "Samples", ""])
         this.analyticsData := Map()
-        this.analyticsBasis := this.gui.AddText("x46 y461 w650 h20", "Current-run tables start empty.")
-        this.AddButton("x46 y483 w198 h32", "Export mission CSV", (*) => Run(this.Q(this.python) " -m fh6.analytics --export", this.workspace, "Hide"))
-        this.AddButton("x252 y483 w198 h32", "Export Wheelspin CSV", (*) => Run(this.Q(this.python) " -m fh6.wheelspin_history --export " this.Q(this.workspace "\runs\wheelspin_exports"), this.workspace, "Hide"))
-        this.AddButton("x458 y483 w190 h32", "Open exports", (*) => this.OpenAnalyticsExports())
-        this.AddButton("x46 y521 w602 h28", "ETA history / interactive chart", (*) => Run(this.workspace "\runs\reports\eta_history.html"))
+        this.analyticsBasis := this.gui.AddText("x244 y479 w702 h20", "No samples yet. Tables use recorded run measurements.")
+        this.AddButton("x244 y501 w214 h32", "Export mission CSV", (*) => Run(this.Q(this.python) " -m fh6.analytics --export", this.workspace, "Hide"))
+        this.AddButton("x466 y501 w214 h32", "Export Wheelspin CSV", (*) => Run(this.Q(this.python) " -m fh6.wheelspin_history --export " this.Q(this.workspace "\runs\wheelspin_exports"), this.workspace, "Hide"))
+        this.AddButton("x689 y501 w205 h32", "Open exports", (*) => this.OpenAnalyticsExports())
+        this.AddButton("x244 y539 w650 h28", "ETA history / interactive chart", (*) => Run(this.workspace "\runs\reports\eta_history.html"))
         this.tabs.UseTab()
-        this.gui.SetFont("s11 c070B10 Bold", "Bahnschrift")
-        this.startButton := this.AddButton("x24 y562 w458 h43", "F6   START / RESUME   運行開始", ObjBindMethod(this, "Start"))
-        this.stopButton := this.AddButton("x498 y562 w226 h43", "F7   STOP   停止", ObjBindMethod(this, "Stop"))
-        this.gui.AddText("x24 y615 w700 h70 Background101820", "")
-        this.gui.SetFont("s9 c070B10 Bold", "Bahnschrift")
-        this.runState := this.gui.AddText("x35 y626 w104 h24 Center +0x200 BackgroundC8FF00", "READY")
-        this.gui.SetFont("s10 cF4FBFB", "Bahnschrift")
-        this.status := this.gui.AddText("x151 y621 w560 h61 BackgroundTrans", "Loading saved progress…")
-        this.gui.SetFont("s9 c83A8B0")
-        this.gui.AddText("x26 y691 w700 h22", "東京  JST   //   F6 START OR RESUME   //   F7 REQUEST STOP")
+        this.gui.SetFont("s11 cFFFFFF Bold", "Segoe UI")
+        this.startButton := this.AddButton("x220 y611 w502 h44", "F6   START / RESUME", ObjBindMethod(this, "Start"))
+        this.stopButton := this.AddButton("x738 y611 w238 h44", "F7   STOP", ObjBindMethod(this, "Stop"))
+        this.gui.AddText("x220 y672 w756 h66 Background151A24", "")
+        this.gui.SetFont("s9 cCBD4E4 Bold")
+        this.runState := this.gui.AddText("x234 y688 w108 h25 Center +0x200 Background273043", "READY")
+        this.gui.SetFont("s10 cE6EAF2 Norm")
+        this.status := this.gui.AddText("x358 y682 w603 h48 BackgroundTrans", "Loading saved progress…")
+        this.gui.SetFont("s8 c92A0B8 Norm")
+        this.gui.AddText("x222 y746 w754 h18", "LOCAL WORKSPACE   ·   Progress is checkpointed   ·   Stop requests finish through the worker")
         corners := Buffer(4, 0)
-        NumPut("Int", 1, corners)
+        NumPut("Int", 2, corners)
         try DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", this.gui.Hwnd, "UInt", 33, "Ptr", corners, "UInt", 4)
-        this.gui.Show("w748 h726" (this.testMode ? " Hide" : ""))
+        dark := Buffer(4, 0)
+        NumPut("Int", 1, dark)
+        try DllCall("dwmapi\DwmSetWindowAttribute", "Ptr", this.gui.Hwnd, "UInt", 20, "Ptr", dark, "UInt", 4)
+        this.gui.Show("w1000 h770" (this.testMode ? " Hide" : ""))
     }
 
     AddButton(options, text, callback) {
-        style := " Center Border +0x100 +0x200 Background111B23 cF4FBFB"
+        style := " Center +0x100 +0x200 Background273043 cE6EAF2"
         if InStr(text, "F6") && InStr(text, "START")
-            style := " Center Border +0x100 +0x200 BackgroundC8FF00 c070B10"
+            style := " Center +0x100 +0x200 Background4776E6 cFFFFFF"
         else if InStr(text, "F7") && InStr(text, "STOP")
-            style := " Center Border +0x100 +0x200 BackgroundE6007E cFFFFFF"
+            style := " Center +0x100 +0x200 Background422A34 cFFD9E1"
         button := this.gui.AddText(options style, text)
-        button.OnEvent("Click", callback)
+        button.OnEvent("Click", this.previewMode ? (*) => 0 : callback)
         return button
     }
 

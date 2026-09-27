@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="516" viewBox="0 0 1000 516" role="img" aria-label="Where conversion time goes">
+<rect width="1000" height="516" rx="18" fill="#101722"/>
+<g font-family="Arial,sans-serif" fill="#edf2fa">
+<text x="36" y="48" font-size="26" font-weight="700">Where conversion time goes</text>
+<text x="36" y="78" fill="#a6b3c5" font-size="14">Median recorded stage duration; these are active timings, not independent causal game costs.</text>
+<text x="36" y="140" font-size="15">Choose</text>
+<rect x="265" y="120" width="560.00" height="28" rx="5" fill="#6475ee"/>
+<text x="840.00" y="140" font-size="14">27.4 s</text>
+<text x="36" y="188" font-size="15">Return</text>
+<rect x="265" y="168" width="249.63" height="28" rx="5" fill="#6475ee"/>
+<text x="529.63" y="188" font-size="14">12.2 s</text>
+<text x="36" y="236" font-size="15">Mastery</text>
+<rect x="265" y="216" width="186.99" height="28" rx="5" fill="#6475ee"/>
+<text x="466.99" y="236" font-size="14">9.1 s</text>
+<text x="36" y="284" font-size="15">Open Mastery</text>
+<rect x="265" y="264" width="94.61" height="28" rx="5" fill="#6475ee"/>
+<text x="374.61" y="284" font-size="14">4.6 s</text>
+<text x="36" y="332" font-size="15">Buy</text>
+<rect x="265" y="312" width="83.42" height="28" rx="5" fill="#6475ee"/>
+<text x="363.42" y="332" font-size="14">4.1 s</text>
+<text x="36" y="380" font-size="15">Bought</text>
+<rect x="265" y="360" width="19.52" height="28" rx="5" fill="#6475ee"/>
+<text x="299.52" y="380" font-size="14">1.0 s</text>
+<text x="36" y="428" font-size="15">Collection</text>
+<rect x="265" y="408" width="2.56" height="28" rx="5" fill="#6475ee"/>
+<text x="282.56" y="428" font-size="14">0.1 s</text>
+</g></svg>

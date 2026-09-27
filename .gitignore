@@ -10,6 +10,8 @@ failures/
 purchases/
 LocalState/
 dist/
+dist-repro/
+dist-download-check/
 *.log
 *.tmp
 discord_webhook.dpapi

@@ -1,152 +1,132 @@
 # FH6 Auto
 
-Windows automation for the Forza Horizon 6 Super Wheelspin loop: farm Skill Points, buy the 95,000-CR Mad Mike Mazda, select the newest copy, claim and verify its 21-SP mastery path, bank the reward, and repeat. **F6 starts. F7 stops.**
+### A desktop workspace for farming, saved rewards, and run analysis.
 
-## 1. Install and run
+Farm Skill Points, convert mastery rewards into saved Super Wheelspins, and finish at your chosen credit reserve. Follow the live operation and inspect the measurements behind it.
+
+[Download](https://github.com/an1dee3301/forza-horizon-6-farming/releases/latest) · [Get started](#get-started) · [Results](#latest-completed-operation) · [Data and methods](docs/latest-operation/REPORT.md) · [Modules](MODULES.md)
+
+![FH6 Auto dashboard — disconnected preview](docs/images/dashboard.png)
+
+**F6** starts or resumes. **F7** requests a stop. The screenshot shows the actual desktop UI in disconnected preview mode.
+
+## Latest completed operation
+
+The September 27 operation finished paid cars, stopped above its **200 million CR reserve**, verified final Mad Mike cleanup empty, and stopped the worker.
+
+| Native observation | Result |
+| :--- | ---: |
+| Credits at the stopping boundary | **200,078,025 CR** |
+| Saved Super Wheelspins after cleanup | **2,197** |
+| Regular Wheelspins after cleanup | **402** |
+| Mad Mikes after final cleanup | **0** |
+
+Final SP is **unavailable as a fresh native reading** because the subsequent observation encountered a video-card crash. The accounting estimate is 239 SP. Both owned Subaru 22Bs remain on the protected keep list.
+
+### Saved reward throughput
+
+![Native saved Wheelspin interval and target](docs/latest-operation/saved-wheelspin-rate.svg)
+
+**183 additional native saved Super Wheelspins in 6 h 30 m 41 s: 28.105 saved SW/hour.** This final observation interval includes farming, conversion, recovery, and final cleanup elapsed time. It is not the rate for the entire multi-day operation.
+
+**33 saved SW/hour remains unproven.** It requires two adjacent native-inventory windows, each adding at least 100 saved spins, including all elapsed time.
+
+### Where conversion time goes
+
+![Conversion stage timing](docs/latest-operation/conversion-stages.svg)
+
+The cleaned dataset contains **796 cycle records** with a **60.336-second median active cycle**. Choosing the car is the largest median stage at **27.375 seconds**, followed by return navigation at **12.203 seconds** and mastery at **9.141 seconds**. Stage medians are separate distributions and should not be summed as an exact cycle.
+
+### Farming and data quality
+
+![Recorded farming performance](docs/latest-operation/farm-throughput.svg)
+
+| Audit result | Latest dataset |
+| :--- | ---: |
+| Recorded conversion cycles | 796 |
+| Recorded farm rows | 67 |
+| Farm rows flagged with partial timing | 12 |
+| Retained cycle outliers | 26 |
+| Journaled removals during final cleanup | 317 |
+| Final cleanup wall time, including recovery | 32.46 min |
+
+The goal counter and farm records differ by one; the report documents that gap. Long delays and outliers remain in the data. Recorded full-history farm throughput therefore differs substantially from selected recent runs. Active time, wall time, native balances, and accounting estimates remain separate.
+
+[Read the quality audit and methods →](docs/latest-operation/REPORT.md) · [Browse sanitized data →](data/latest-operation/) · [Historical cohorts →](docs/HISTORICAL-RESULTS.md)
+
+## Get started
 
 ### Requirements
 
-- Windows 10 or 11
-- Python 3.12 (the tested release runtime)
-- AutoHotkey v2
-- Forza Horizon 6 through Steam
-- English game menus at 1920×1080
-- The maxed 1998 Subaru Impreza 22B set as the only Favorite
-- Mega Farm V6 share code `155 439 962`
+- Windows 10/11, 64-bit Python 3.12, and AutoHotkey v2.
+- Forza Horizon 6 through Steam, English menus, 1920×1080.
+- Fully upgraded 1998 Subaru Impreza 22B with completed mastery, configured as the farm Favorite.
+- Mega Farm V6 share code **155 439 962**.
 
-### Install
+### Install and run
 
-1. Download and extract the latest release.
-2. Install AutoHotkey v2, then run `Setup FH6 Auto.cmd` once. It creates a private Python 3.12 environment, installs the release's pinned Windows dependencies, verifies imports, and opens the dashboard.
-3. For later runs, use `Start FH6 Auto.cmd`.
+1. Extract the [latest release](https://github.com/an1dee3301/forza-horizon-6-farming/releases/latest).
+2. Run **Setup FH6 Auto.cmd** to install the pinned environment and open the dashboard.
+3. Open Steam and the game. Choose your mission, target, reserve, and cleanup policy.
+4. Put the game in a supported home or festival state, then press **F6**.
+5. Press **F7** to stop. Use **Start FH6 Auto.cmd** for later sessions.
 
-For development installs, clone the repository and run the same setup file. Tests require `requirements-dev.txt` and run with `python -m pytest`.
+Source installs use the same setup file. See the [desktop UI guide](docs/DESKTOP-UI.md).
 
-### Run
+## One workspace, six views
 
-1. Open Steam and sign in.
-2. Start FH6 Auto.
-3. Choose a mode and target in Mission Control.
-4. Put Forza in a supported home or festival state.
-5. Press **F6**.
-6. Press **F7** whenever you want the worker to stop safely.
+| View | Purpose |
+| :--- | :--- |
+| Mission | Action, target, credit reserve, monitor, and cleanup settings |
+| Activity | Completed cars, farm runs, saved inventory, and progress |
+| Recovery | Evidence, checkpoint recovery, and purchase reconciliation |
+| History | Previous activity and saved sessions |
+| Tools | Individual farming, recognition, and conversion modules |
+| Analytics | Timing distributions, throughput, failure costs, and exports |
 
-To keep a credit reserve, set **Credits to keep (CR)** in the Mission tab. Choose **Final cleanup only** to accumulate Mad Mikes during farming and remove them together when the reserve stops purchases. Blank reserve and **Keep saved / default cleanup** preserve the current goal's settings. See [credit reserve and final cleanup](docs/operations/credit-reserve.md) for resume behavior and CLI options.
+### Reserve and cleanup
 
-The program can launch FH6 through Steam and resume after a crash. A visible cloud-sync gate always takes priority; it waits for synchronization and never chooses offline play.
+**Credits to keep (CR)** protects your stopping balance. The worker finishes a paid car, checks the next 95,000-CR purchase, and stops before crossing the reserve.
+
+**Final cleanup only** keeps Mad Mikes during farming, then removes them together with per-removal checkpoints and a verified empty result. Reserve-based completion performs no terminal SP top-up. Blank settings preserve the saved configuration. [Behavior and CLI options →](docs/operations/credit-reserve.md)
 
 ### Production loop
 
-1. Read the current SP balance.
-2. Run Mega Farm V6 in full-run or headroom-aware top-up mode.
-3. Buy exactly one Mad Mike Mazda through Car Collection.
-4. Open My Cars → Recently Added and select the newest untouched copy.
-5. Claim and visually verify all six required mastery nodes.
-6. Record the Super Wheelspin reward and return to the next purchase.
-7. Apply the selected cleanup policy: configured intervals, or defer removal until the final credit-reserve stop.
-8. With a credit reserve, finish any paid copy, stop before another purchase would cross the reserve, remove the remaining Mad Mikes, verify zero, and stop without an SP top-up. Without a reserve, credit-exhaustion mode retains its final 999-SP top-up and cleanup.
+1. Read SP and farm when more points are needed.
+2. Buy one 95,000-CR Mad Mike Mazda.
+3. Select the new copy and verify its six-node, 21-SP mastery path.
+4. Record the saved Super Wheelspin and check the remaining credit budget.
+5. At the reserve, finish the paid car, complete cleanup, verify inventory, and stop.
 
-This production mode saves rewards. The separate Wheelspin Lab opens saved spins.
+Purchases and rewards are checkpointed to avoid replay. The separate Wheelspin Lab opens saved spins.
 
-### Safety and recovery
+### Protection and reporting
 
-- Checks window identity, foreground focus, resolution, language, and expected screen before critical input.
-- Uses OpenCV for calibrated visual states and OCR for variable numbers and text.
-- Compares mastery-node interiors, excluding the changing focus border.
-- Verifies each node changed from locked to owned before advancing.
-- Checks the exact car, 95,000-CR offer, selected Buy action, and purchase confirmation.
-- Never repeats an uncertain purchase.
-- Requires two matching credit reads before a credit-limited purchase decision.
-- Uses hybrid inventory tracking: verified rewards update immediately, then a fresh My Horizon read corrects the total.
-- Saves checkpoints, error screenshots, failure causes, and recovery timing.
-- Detects a stationary farm car and performs bounded reverse recovery.
-- Keeps Discord rendering, analytics, screenshots, and account reads off the input-critical path where safe.
+- Keep-list rules protect both owned Subaru 22Bs and configured cars.
+- Native screen, account, focus, process, and receipt checks support recovery.
+- A healthy game is not terminated. Crash recovery uses Steam and waits for synchronization.
+- Discord webhooks are optional, encrypted with Windows DPAPI, and excluded from releases.
 
-### Optional Discord reporting
+Automatic Wheelspin Lab actions remain disabled pending fresh live validation. The older protected-car sale incidents and corrected policy remain documented in the [historical Wheelspin report](docs/WHEELSPIN-OPERATION-2026-09-19.md).
 
-Add a webhook in the dashboard to receive the live mission board and current game capture. The webhook is encrypted with Windows DPAPI for the current Windows user and is excluded from Git and release archives.
+## Reproduce the analysis
 
-### Project map
+Normalized tables, audit findings, and graphs are versioned together. Original runtime evidence remains private and unchanged. Missing measurements stay missing; outliers are flagged, not silently discarded.
+
+See [analysis commands and methodology](docs/latest-operation/REPORT.md), [chart conventions](CHART-METHODS.md), and the [optimization budget](docs/operations/throughput-budget-20260926.md).
+
+## Development
 
 | Path | Purpose |
-|---|---|
-| `FH6 Auto.pyw` | Mission Control desktop app |
-| `fh6/` | Navigation, recognition, farming, recovery, analytics, and reporting |
-| `forza_cycle.py` | Shared configuration and mission state |
-| `recognition/`, `templates/`, `calibration/` | Screen and mastery references |
-| `profiles/` | Farm profiles |
-| `tests/` | Public regression suite |
-| [`MODULES.md`](MODULES.md) | Module-level map |
-| [`RECOGNITION.md`](RECOGNITION.md) | Recognition and calibration notes |
-| [`CHART-METHODS.md`](CHART-METHODS.md) | Chart and metric conventions |
-| [`SECURITY.md`](SECURITY.md) | Private-state and credential handling |
-| [`docs/DEVELOPMENT-HISTORY.md`](docs/DEVELOPMENT-HISTORY.md) | Color-coded, dated code-change history |
+| :--- | :--- |
+| `FH6 Auto.pyw` | Desktop entry point |
+| `Forza-Horizon-6-Wheelspin-Macro-main/Modules/LocalPanel.ahk` | Dashboard |
+| `fh6/` | Farming, navigation, accounting, analytics, reporting |
+| `tests/` | Regression suite |
+| `data/latest-operation/` | Sanitized normalized tables |
+| `tools/analyze_operation.py` | Reproducible analysis and charts |
+| `docs/latest-operation/` | Findings, methods, and figures |
 
-Private gameplay captures, `runs/`, `failures/`, `purchases/`, `LocalState/`, virtual environments, process identifiers, and Discord credentials stay outside Git.
+Install `requirements-dev.txt`, then run `python -m pytest -q -p no:cacheprovider`. Runtime smoke checks send no game inputs. See [release verification](RELEASE-CHECKLIST.md), [recognition notes](RECOGNITION.md), and [security](SECURITY.md).
 
-The [September 26 speed investigation](docs/operations/2026-09-26-speed-investigation.md) and its [aggregate timing data](data/2026-09-26-speed-baseline.json) record the current bottlenecks, rejected shortcuts, and measurement needed before claiming 33 saved Super Wheelspins/hour.
-
-## 2. Three-phase highlights
-
-The operation contains three measured cohorts. The README keeps only the comparison; the [complete all-phase report](docs/full-operation-report/REPORT.md) contains the full timing, farming, finance, reliability, inventory, cleanup, methods, and evidence detail.
-
-| Metric | Pre-Phase 1 · 0→517 | Phase 1 · restart from 333 | Phase 2 · credit exhaustion |
-|---|---:|---:|---:|
-| Cars / new Super Wheelspins | 517 | 1,398 | 1,337 |
-| Farm runs | 35 | 116 | 112 |
-| Recorded active time | 19.26h | 54.72h | 46.65h |
-| Recorded farm time | 10.39h | 25.55h | 27.70h |
-| Retained farm SP | 11,600 | 28,534 | 28,700 |
-| Cycle P50 | 56.09s | 47.37s | **45.62s** |
-| Cycle P90 | 63.63s | 58.69s | **54.64s** |
-| Cycle P99 | 72.35s | 83.46s | **59.01s** |
-| SW / active hour | 26.85 | 25.55 | **28.66** |
-| Retained SP / farm hour | 1,116 | **1,117** | 1,036 |
-| Farm-supported cars / hour | 53.15 | **53.19** | 49.34 |
-| Conversion capacity | 61.92 cars/h | **64.48 cars/h** | 63.19 cars/h |
-| First-pass yield | 96.71% | 95.92% | **97.23%** |
-| Broad retries | **76** | 1,744 | 306 |
-| Retries / 1,000 cars | **147.0** | 1,247.5 | 228.9 |
-| Crashes | **2** | 20 | 7 |
-| Crashes / 1,000 cars | **3.87** | 14.31 | 5.24 |
-| Gross Mazda spend | 49.12M CR | 132.81M CR | 127.02M CR |
-
-Phase 2 was the strongest conversion and recovery cohort: versus Phase 1, P50 improved **3.68%**, P90 **6.91%**, P99 **29.30%**, and active reward throughput **12.19%**. SP farming fell **7.22%**, leaving farm output as the main remaining bottleneck.
-
-### Speed
-
-![Cycle percentiles across all phases](docs/full-operation-report/charts/18_three_phase_cycle_percentiles.png)
-
-![Cycle-duration distributions](docs/full-operation-report/charts/14_three_phase_cycle_ecdf.png)
-
-![Stage P50 across all cohorts](docs/full-operation-report/charts/16_three_phase_stage_p50.png)
-
-### Throughput
-
-![Active reward and SP farm throughput](docs/full-operation-report/charts/19_three_phase_throughput.png)
-
-### Reliability and workload
-
-![Normalized reliability and first-pass yield](docs/full-operation-report/charts/20_three_phase_reliability.png)
-
-![Cars, farm runs, and recorded hours](docs/full-operation-report/charts/21_three_phase_workload.png)
-
-Across all three phases: **3,252 cars**, **3,252 verified rewards**, **263 farm runs**, and **308.94M CR** spent on Mazdas. The final verified Phase 2 state was **2,506 saved SW**, **230 WS**, **999 SP**, **42,170 CR**, and **zero Mad Mikes**.
-
-## 3. Wheelspin results
-
-The [500-Super-Wheelspin operation report](docs/WHEELSPIN-OPERATION-2026-09-19.md) records the first completed Wheelspin Lab run. These are opened spins and their rewards; they are **separate from** the three farming cohorts above.
-
-| Result | 500-spin run |
-|---|---:|
-| Spins completed / reward slots recorded | **500 / 1,500** |
-| Credit / car / other rewards | 1,126 / 349 / 25 |
-| Direct credit rewards | **85.14M CR** |
-| Verified duplicate-sale credits | **48.78M CR** |
-| Total credits logged | **133.92M CR** |
-| Duplicate cars sold / kept | 346 / 3 |
-| Protected car pulls / kept / sold in error | **8 / 3 / 5** |
-| Wall time / throughput | 2.63h / 189.91 spins/h |
-| Spin duration P50 / P90 | 7.02s / 8.71s |
-
-Five protected cars were sold in error during this run, including four Lamborghinis. The kept-car count must not be read as successful enforcement of the retention policy. The corrected policy keeps **CLK GTR, One:1, Venom GT, Nevera, Apollo IE, 599XX Evolution, both Subaru Impreza 22B-STi copies, and every Lamborghini**; the 45-car Wheelspin-exclusive catalog is for statistics only. Automatic Wheelspin Lab actions are disabled locally pending fresh live safety validation. The [full report](docs/WHEELSPIN-OPERATION-2026-09-19.md) includes the audited incidents, car pulls, recovery data, and [machine-readable results](docs/data/wheelspin-operation-20260919/summary.json).
+Private captures, account identifiers, receipts, save data, credentials, and live runtime directories stay outside Git and release packages.

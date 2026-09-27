@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "goal_state": "complete",
+  "end_reason": "credit_stop_floor",
+  "final_native_credits": 200078025,
+  "final_native_super_wheelspins": 2197,
+  "final_native_regular_wheelspins": 402,
+  "final_native_sp": null,
+  "last_observed_sp": 365,
+  "goal_completed_cars": 796,
+  "native_interval_gain": 183,
+  "native_interval_wall_seconds": 23441.0,
+  "native_interval_sw_per_hour": 28.105,
+  "two_adjacent_100_gain_windows_pass": false,
+  "final_cleanup_wall_seconds": 1947.782,
+  "final_cleanup_journal_removals": 317,
+  "final_cleanup_status": "verified_empty",
+  "cycle_median_active_seconds": 60.336,
+  "farm_total_gain": 16559,
+  "farm_total_wall_seconds": 134730.0,
+  "farm_weighted_sp_per_wall_hour": 442.458
+}

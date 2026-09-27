@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="516" viewBox="0 0 1000 516" role="img" aria-label="Farm throughput across the operation">
+<rect width="1000" height="516" rx="18" fill="#101722"/>
+<g font-family="Arial,sans-serif" fill="#edf2fa">
+<text x="36" y="48" font-size="26" font-weight="700">Farm throughput across the operation</text>
+<text x="36" y="78" fill="#a6b3c5" font-size="14">SP gained / recorded farm wall time; conversion and garage cleanup excluded.</text>
+<text x="36" y="140" font-size="15">Runs 1-10</text>
+<rect x="265" y="120" width="11.14" height="28" rx="5" fill="#6475ee"/>
+<text x="291.14" y="140" font-size="14">24.3 SP/h</text>
+<text x="36" y="188" font-size="15">Runs 11-20</text>
+<rect x="265" y="168" width="15.93" height="28" rx="5" fill="#6475ee"/>
+<text x="295.93" y="188" font-size="14">34.8 SP/h</text>
+<text x="36" y="236" font-size="15">Runs 21-30</text>
+<rect x="265" y="216" width="543.76" height="28" rx="5" fill="#6475ee"/>
+<text x="823.76" y="236" font-size="14">1,188.6 SP/h</text>
+<text x="36" y="284" font-size="15">Runs 31-40</text>
+<rect x="265" y="264" width="560.00" height="28" rx="5" fill="#6475ee"/>
+<text x="840.00" y="284" font-size="14">1,224.1 SP/h</text>
+<text x="36" y="332" font-size="15">Runs 41-50</text>
+<rect x="265" y="312" width="500.47" height="28" rx="5" fill="#6475ee"/>
+<text x="780.47" y="332" font-size="14">1,093.9 SP/h</text>
+<text x="36" y="380" font-size="15">Runs 51-60</text>
+<rect x="265" y="360" width="500.66" height="28" rx="5" fill="#6475ee"/>
+<text x="780.66" y="380" font-size="14">1,094.4 SP/h</text>
+<text x="36" y="428" font-size="15">Runs 61-67</text>
+<rect x="265" y="408" width="545.44" height="28" rx="5" fill="#6475ee"/>
+<text x="825.44" y="428" font-size="14">1,192.2 SP/h</text>
+</g></svg>
