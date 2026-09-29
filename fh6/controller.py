@@ -269,7 +269,8 @@ class Controller:
                             if config['mode'] == GOAL_MODE:
                                 from .garage import FilterReader
                                 FilterReader().validate()
-                            if lifecycle.path.exists() and config['mode'] not in {'Recognition only', 'Open game'}:
+                            if lifecycle.path.exists() and config['mode'] not in {
+                                    'Recognition only', 'Open game', 'Tokyo Delivery'}:
                                 reconcile_after_restart(nav, core.PurchaseLedger(), Session(),
                                     Challenge(nav, emit=self.emit), GoalSession(core.BASE/'runs/goal.json'))
                                 lifecycle.path.unlink()
@@ -277,9 +278,10 @@ class Controller:
                             if config['mode'] != 'Recognition only':
                                 from .keyboard_layout import ensure_game_keyboard
                                 ensure_game_keyboard(nav)
-                                # Wake the idle garage camera without selecting a menu item.
-                                nav.key('shift')
-                                nav.pause(.3)
+                                if config['mode'] != 'Tokyo Delivery':
+                                    # Wake the idle garage camera without selecting a menu item.
+                                    nav.key('shift')
+                                    nav.pause(.3)
                             if config['mode'] == 'Recognition only':
                                 while self.running.is_set():
                                     obs = nav.observe()
@@ -295,6 +297,14 @@ class Controller:
                                 WheelspinLab(nav, self.running, self.emit).run(
                                     config['limit'], config.get('spin_type', 'SUPER'),
                                     config.get('dry_run', True), config.get('stop_on_unknown', True))
+                            elif config['mode'] == 'Tokyo Delivery':
+                                from .tokyo_delivery import TokyoDelivery
+                                pending = Session().data
+                                if pending and pending.get('phase') != 'complete':
+                                    raise RuntimeError('Finish the saved car before starting Tokyo Delivery')
+                                self.emit('activity', True)
+                                TokyoDelivery(nav, self.running, self.emit).run(config['limit'])
+                                break
                             elif config['mode'] == GOAL_MODE:
                                 session = GoalSession(core.BASE/'runs'/'goal.json')
                                 validate_resume(session.data, config.get('resume_goal_id'))
@@ -352,6 +362,11 @@ class Controller:
                                 session.pause()
                                 self.emit('progress', dict(session.data))
                             self.emit('activity', False)
+                            if config['mode'] == 'Tokyo Delivery':
+                                from .tokyo_delivery import DeliveryInputUncertain
+                                from .session import CheckpointCorrupt
+                                if isinstance(exc, (DeliveryInputUncertain, CheckpointCorrupt)):
+                                    raise
                             if isinstance(exc, SyncPending):
                                 # Unwind any held driving/mastery key before waiting.
                                 # This does not enter the crash/retry path or its timer.
@@ -384,7 +399,7 @@ class Controller:
                                 continue
                             if (isinstance(exc, RuntimeError) and
                                     not isinstance(exc, core.MasteryStopped) and
-                                    config['mode'] in {GOAL_MODE, 'Wheelspin Lab'}):
+                                    config['mode'] in {GOAL_MODE, 'Wheelspin Lab', 'Tokyo Delivery'}):
                                 seconds = self.retry_delay.next()
                                 self.emit('status', f'Retrying saved step in {seconds}s (attempt {self.retry_delay.attempts}): {exc}. F7 stops.')
                                 self.emit('log', 'Retry keeps the durable checkpoint; it never repeats a committed reward or clears an uncertain transaction.')

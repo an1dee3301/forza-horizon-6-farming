@@ -133,6 +133,24 @@ class SyncGuard:
         if 'continue' in sent and (launched or 'start' in sent):
             self.evidence = 'Observed native startup through Continue to the ready game'
 
+    def playable_ui_complete(self, identity, screen):
+        """Accept repeated native playable UI as process-bound sync proof.
+
+        The lifecycle owns the stability counter and calls this only after the
+        same recognized playable screen has been visible for three captures,
+        with no Gaming UI/cloud window and no sync/offline/conflict text.  A
+        playable menu cannot coexist with an unfinished cloud-sync dialog, so
+        holding the worker for a historical completion message only wastes
+        time when it attaches to an already-running game.
+        """
+        identity = list(identity)
+        if not identity or self.visible():
+            return False
+        self.evidence = f'Observed stable playable {screen} UI for current game process'
+        self.verified_identity = identity
+        self.save_proof()
+        return True
+
     def require_verified(self, identity):
         self.check()
         identity = list(identity)

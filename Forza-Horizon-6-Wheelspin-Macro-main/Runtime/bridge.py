@@ -21,7 +21,7 @@ from forza_cycle import PurchaseLedger
 from fh6.budget import plan_from_sp, whole_number
 from fh6.controller import Controller, set_dpi_awareness
 from fh6.pipeline import STAGES
-from fh6.session import Session
+from fh6.session import Session, load_checkpoint
 from fh6.telemetry import duration, summary
 from fh6.production import GoalSession, MODE as GOAL_MODE
 from fh6.profiles import load_profile, save_profile, ChallengeProfile
@@ -30,20 +30,40 @@ from fh6.supervision import validate_resume
 from dataclasses import replace
 from fh6.wheelspin import MODE as WHEELSPIN_MODE
 
+TOKYO_DELIVERY_MODE = 'Tokyo Delivery'
+
 STAGE_NAMES = dict(STAGES, complete='Complete', inspect_sp='Read actual SP balance', farm='Run Mega V6',
                   farm_prepare='Select the 22B and verify settings', farm_search='Find challenge 155439962',
                   farm_launch='Start the verified challenge', farm_drive='Farm SP — Mega V6',
                   farm_leave='Exit the completed challenge', farm_read_sp='Verify SP earned',
                   farm_return='Return home → Car Collection', game_start='Open game through Steam',
                   game_restart='Restart crashed game', cloud_sync='Waiting for full cloud sync — all actions paused',
-                  wheelspin_open='Wheelspin Lab — record rewards')
+                  wheelspin_open='Wheelspin Lab — record rewards',
+                  tokyo_home='Tokyo Delivery — open the job',
+                  tokyo_roam='Tokyo Delivery — reach the job',
+                  tokyo_map='Tokyo Delivery — locate the job',
+                  tokyo_solo='Tokyo Delivery — start the shift',
+                  tokyo_intro='Tokyo Delivery — enter the shift',
+                  tokyo_active='Tokyo Delivery — drive the route',
+                  tokyo_fast_confirm='Tokyo Delivery — confirm fast travel',
+                  tokyo_pause_menu='Tokyo Delivery — leave pause menu',
+                  tokyo_job_journal='Tokyo Delivery — leave job journal',
+                  tokyo_journal='Tokyo Delivery — leave journal',
+                  tokyo_discover='Tokyo Delivery — leave Discover',
+                  tokyo_collection_grid='Tokyo Delivery — leave collection',
+                  tokyo_summary='Tokyo Delivery — verify the result')
 MODES = (GOAL_MODE, 'Full pipeline', 'Buy only', 'Mastery only', 'Recognition only',
-         'Farm SP only', 'Return to collection', 'Check farm setup', WHEELSPIN_MODE, 'Open game')
+         'Farm SP only', 'Return to collection', 'Check farm setup', WHEELSPIN_MODE,
+         TOKYO_DELIVERY_MODE, 'Open game')
 
 
-def configuration(args, saved, goal=None):
+def configuration(args, saved, goal=None, delivery=None):
     """An unfinished checkpoint always owns the original target and balance."""
     goal = goal or {}
+    delivery = delivery or {}
+    delivery_pending = bool(delivery and delivery.get('phase') != 'complete')
+    if delivery_pending and args.mode not in {TOKYO_DELIVERY_MODE, 'Recognition only', 'Open game'}:
+        raise ValueError('Resume the saved Tokyo Delivery shift before starting another module')
     resume_id = getattr(args, 'resume_goal_id', '')
     credit_floor = getattr(args, 'credit_floor', None)
     cleanup_policy = getattr(args, 'cleanup_policy', None)
@@ -82,6 +102,17 @@ def configuration(args, saved, goal=None):
             raise ValueError('Use a Wheelspin quantity of 1–10,000')
         result = dict(mode=WHEELSPIN_MODE, limit=target, spin_type=args.spin_type,
                       dry_run=bool(args.dry_run), stop_on_unknown=bool(args.stop_on_unknown))
+    elif args.mode == TOKYO_DELIVERY_MODE:
+        if goal and goal.get('phase') != 'complete':
+            raise ValueError('Finish or end the saved farming mission before Tokyo Delivery')
+        if saved and saved.get('phase') != 'complete':
+            raise ValueError('Finish the saved Mad Mike before Tokyo Delivery')
+        target = whole_number(args.target, 'Delivery shift count')
+        if not 1 <= target <= 10000:
+            raise ValueError('Use a delivery shift count of 1–10,000')
+        if delivery_pending and target != delivery.get('limit'):
+            raise ValueError('Resume Tokyo Delivery with its saved shift target')
+        result = dict(mode=TOKYO_DELIVERY_MODE, limit=target)
     elif goal and goal.get('phase') != 'complete' and args.mode != 'Recognition only':
         raise ValueError('Resume or end the saved wheelspin target before running another module')
     elif saved and saved.get('phase') != 'complete':
@@ -250,6 +281,18 @@ class Status:
                 total = totals(self.session)
                 self.data.update(completed=total['total_progress'], limit=total['total_target'],
                                  percent=round(total['total_percent']), starting_spins=total['starting_spins'])
+            elif self.session.get('mode') == TOKYO_DELIVERY_MODE:
+                self.data.update(window_left='UNTIL SHIFTS / F7',
+                                 delivery_completed=values['completed'],
+                                 delivery_remaining=values['remaining'] if values['remaining'] is not None else '—',
+                                 analytics_header=(f"TOKYO DELIVERY  •  {values['completed']} / "
+                                                   f"{self.session.get('limit', 0)} verified shifts"),
+                                 analytics_basis='A shift is counted only after its game result is verified.',
+                                 analytics_overview='~'.join([
+                                     f"Completed shifts^{values['completed']}^Verified results",
+                                     f"Target shifts^{self.session.get('limit', 0)}^Requested count",
+                                     f"Remaining shifts^{values['remaining'] if values['remaining'] is not None else '—'}^Until target",
+                                 ]))
             parser = configparser.ConfigParser(interpolation=None)
             parser['run'] = {key: str(value).replace('\r', ' ').replace('\n', ' ')
                              for key, value in self.data.items()}
@@ -295,6 +338,8 @@ def inspect_session(status, session):
     data = session.data
     goal = GoalSession(WORKSPACE/'runs/goal.json').data
     goal_pending = bool(goal and goal.get('phase') != 'complete')
+    delivery = load_checkpoint(WORKSPACE/'runs/tokyo_delivery.json')
+    delivery_pending = bool(delivery and delivery.get('phase') != 'complete')
     points = settings.get('skill_points', '')
     if data.get('skill_points') is not None:
         points = data['skill_points']
@@ -311,6 +356,8 @@ def inspect_session(status, session):
         visible = dict(id=lab['session_id'], mode=WHEELSPIN_MODE, phase='running',
                        completed=lab['completed_spins'], rewards=lab['completed_spins'], bought=0,
                        limit=lab['requested_spins'], active_seconds=0, farm_runs=0)
+    if delivery_pending and not goal_pending and not (data and data.get('phase') != 'complete'):
+        visible = dict(delivery, mode=TOKYO_DELIVERY_MODE)
     status.event('progress', visible)
     status.event('stage', visible.get('phase', 'inspect_sp'))
     status.write(input_sp=points, reserve=data.get('reserve_sp', settings.get('reserve_sp', 0)),
@@ -323,9 +370,11 @@ def inspect_session(status, session):
                  game_priority=int(launch.get('game_priority', True)),
                  message='Saved wheelspin target ready to resume.' if goal_pending else
                  'An unfinished car is saved. The target mode will finish it first.' if data and data.get('phase') != 'complete'
+                 else 'Saved Tokyo Delivery shift ready to resume.' if delivery_pending
                  else 'Enter how many Super Wheelspins to earn, then Start or F6.',
                  error_image='', busy=0, ok=1, history=history_text(session),
-                 saved_mode=WHEELSPIN_MODE if lab and lab.get('status') == 'RUNNING' else GOAL_MODE)
+                 saved_mode=TOKYO_DELIVERY_MODE if delivery_pending else
+                     WHEELSPIN_MODE if lab and lab.get('status') == 'RUNNING' else GOAL_MODE)
     if (WORKSPACE/'runs/cloud_sync.json').exists():
         status.write(stage='Waiting for full cloud sync',
                      message='Cloud sync needs verification. Use Recovery only after confirming it fully completed.')
@@ -396,7 +445,8 @@ def main(argv=None):
             if args.action == 'save-profile':
                 status.write(message='Challenge profile saved.')
             return 0
-        config = configuration(args, session.data, GoalSession(WORKSPACE/'runs/goal.json').data)
+        config = configuration(args, session.data, GoalSession(WORKSPACE/'runs/goal.json').data,
+                               load_checkpoint(WORKSPACE/'runs/tokyo_delivery.json'))
         set_dpi_awareness()
         controller = Controller(status.event)
         def stop_mission():

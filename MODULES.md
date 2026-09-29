@@ -7,6 +7,16 @@ shares WorkerLease, F7, focus, display, sync and lifecycle guards. The legacy
 `Mode_Spin.ahk` remains reference-only. SQLite enforces the record-first action
 invariant; Dry Run is enabled until reviewed game captures pass calibration.
 
+## Tokyo Delivery
+
+**Tokyo Delivery** follows `LocalPanel → bridge.py → Controller → TokyoDelivery`.
+It shares the worker lease, F7, process/focus, display and sync guards, and has
+its own `runs/tokyo_delivery.json` checkpoint. The virtual controller enables
+ANNA Auto Drive only after its native option is verified, then the worker checks
+route progress and parking. It counts only a positive native shift result,
+retains uncertain menu inputs without replay, and bounds recovery. See
+[setup and limits](docs/TOKYO_DELIVERY.md).
+
 Open **Start FH6 Auto.cmd** or **FH6 Auto.pyw**. Both open the same dashboard.
 
 Choose **Earn saved Super Wheelspins**, enter how many **additional** Super Wheelspins
@@ -14,9 +24,11 @@ you want, then press **F6**. **F7** stops. The program reads actual SP, finishes
 saved purchased car first, and runs Mega V6 when another 21-SP tree cannot be funded.
 Each car ends back at Car Collection, including the last one. The earned spins stay saved.
 
-Mega V6 has passed live refill and subsequent 47-car batch checks. The current
-fresh target is 1,000 new saved spins, with earlier rewards excluded. Unexpected
-screens preserve the checkpoint and retry; F7 cancels the mission.
+Mega V6 has passed live refill and 47-car batch checks. The latest completed
+operation stopped above its saved 200 million CR floor and performed verified
+final cleanup. See the [operation report](docs/latest-operation/REPORT.md) for
+measured results and evidence limits. Unexpected screens preserve the
+checkpoint; F7 cancels the mission.
 
 ## Mega V6 setup
 
@@ -36,7 +48,8 @@ The Modules tab has a small challenge-settings dialog for the code and run durat
 
 | Function | Entry point | Status |
 |---|---|---|
-| Wheelspin target planner | Main run mode | Offline accounting and restart tests pass; needs live full-route test |
+| Wheelspin target planner | Main run mode | Live credit-reserve operation and final cleanup completed; checkpoint and keep-list guards remain active |
+| Tokyo City Food Delivery | Tokyo Delivery | Checkpointed controller and synthetic route tests pass; full unattended route validation remains open |
 | Mega V6 SP challenge | Farm SP only | Favorite Subaru, settings, timer, movement pulses, completion, exit and retained SP verified live (27 → 383 on the first fresh-mission run) |
 | Farm setup check | Check farm setup | Checks visible assist and HUD rows; farming also verifies the Subaru's 14 owned nodes; no tune installation |
 | Purchase + mastery loop | Full pipeline | Existing verified flow; now uses My Cars directly |
@@ -58,10 +71,9 @@ its original entry point remains in `UpstreamMain.ahk.txt`. They are not silentl
 the new worker. Full feature parity is **not complete**: automatic spin opening with
 keep/sell/gift choices, other car mastery profiles, duplicate removal, the floating
 widget, and Special K/background operation are not connected to
-the new dashboard. Purchased Mazdas currently remain in the garage.
-
-Removal needs a reliable identity for the exact completed copy. NEW disappearing
-does not prove which duplicate has completed mastery. No removal inputs are sent.
+the new dashboard. The saved-credit-reserve production goal supports a final,
+checkpointed Mad Mike cleanup after farming stops; other individual modules do
+not promise garage cleanup.
 
 ## Progressive checks
 

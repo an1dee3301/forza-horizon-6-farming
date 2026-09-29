@@ -1,4 +1,5 @@
 -r requirements-gui.txt
 -r requirements-recognition.txt
 -r requirements-window-capture.txt
+-r requirements-controller.txt
 pytest>=9.0,<10

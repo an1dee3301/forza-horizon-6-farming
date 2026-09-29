@@ -36,6 +36,23 @@ def startup_screen(doc):
     return None
 
 
+def controller_disconnected_modal(doc):
+    """Recognize only FH6's native reconnect prompt, never a cloud dialog.
+
+    The footer keycap alternates between ``Enter`` and ``0k`` under the
+    farming navigator's native HUD crop.  The title, body, and footer must
+    still occupy three disjoint regions of the game frame.
+    """
+    if not isinstance(getattr(doc, 'lines', None), (list, tuple)):
+        return False
+    return (doc.has('Controller Disconnected', (600, 450, 720, 100)) and
+            doc.has('Please reconnect a controller', (660, 535, 600, 90),
+                    contains=True) and
+            any(doc.has(label, (65, 965, 180, 85), contains=True)
+                for label in ('Enter', 'Ok', '0k')) and
+            not sync_state(doc))
+
+
 def steam_installation():
     import winreg
     with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r'Software\Valve\Steam') as key:
@@ -212,6 +229,16 @@ class WindowsGame:
         self.u.SetForegroundWindow(windows[0][0])
         return True
 
+    def foreground_matches(self, expected_identity):
+        """Prove foreground PID belongs to the same creation-time binding."""
+        self.u.GetForegroundWindow.restype = wt.HWND
+        hwnd = self.u.GetForegroundWindow()
+        pid = wt.DWORD()
+        self.u.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+        return (len(expected_identity) == 1 and
+                str(expected_identity[0]).split(':', 1)[0] == str(pid.value) and
+                tuple(self.identity()) == tuple(expected_identity))
+
 
 class GameLifecycle:
     def __init__(self, running, emit=lambda *a: None, enabled=True, max_restarts=0,
@@ -294,6 +321,44 @@ class GameLifecycle:
             self.pause(.1)
         return False
 
+    def wait_focus(self):
+        """Wait without gameplay inputs; focus loss does not spend step retries.
+
+        Windows may deny activation. Try at most three times per minute, with
+        2/5-second early backoffs, and keep a cancellable passive wait between
+        attempts. A replacement exits to the existing startup/sync path.
+        """
+        expected = self._current_identity()
+        if not expected:
+            raise GameCrashed('Game process exited while waiting for focus')
+        if len(expected) != 1:
+            raise RuntimeError('Cannot bind focus recovery to exactly one game process')
+        self.emit('status', 'Waiting for game focus; saved step retained. F7 stops.')
+        window_start, attempts, next_attempt = self.clock(), 0, self.clock()
+        while True:
+            self.check()
+            self.check_sync()
+            current = self._current_identity()
+            if not current or self.game.crashed():
+                raise GameCrashed('Game exited or crashed while waiting for focus')
+            if current != expected:
+                if self.sync_guard:
+                    self.sync_guard.evidence = None
+                    self.sync_guard.verified_identity = None
+                return False
+            if self.game.foreground_matches(expected):
+                self.emit('log', 'Same game process regained foreground; resuming saved stage')
+                return True
+            now = self.clock()
+            if now-window_start >= 60:
+                window_start, attempts, next_attempt = now, 0, now
+            if (attempts < 3 and now >= next_attempt and self.enabled and self.priority
+                    and core.foreground_title().casefold() != 'gaming ui'):
+                self.game.activate()
+                attempts += 1
+                next_attempt = now + (2 if attempts == 1 else 5)
+            self.pause(.2)
+
     def pause(self, seconds):
         end = self.clock()+seconds
         while self.clock() < end:
@@ -320,11 +385,15 @@ class GameLifecycle:
 
     def recover(self, exc, nav):
         self.check()
-        self.check_sync()
+        _, expected_identity, detected_at = self._remember_crash(exc)
+        current = self._current_identity()
+        if current and expected_identity and tuple(current) != tuple(expected_identity):
+            return self._verify_replacement(nav)
+        crash_confirmed = isinstance(exc, GameCrashed) or self.game.crashed()
+        self._crash_cleanup_gate(expected_identity, crash_confirmed=crash_confirmed)
         self.mark_recovery(exc)
         if self.max_restarts and self.restarts >= self.max_restarts:
             raise RuntimeError(f'Crash restart limit reached ({self.max_restarts}). Progress saved. Last error: {exc}')
-        _, expected_identity, detected_at = self._remember_crash(exc)
         self.restarts += 1
         self._timing = dict(kind='crash_recovery', started=detected_at, seen=set())
         self._timing_event('crash_detected')
@@ -337,36 +406,63 @@ class GameLifecycle:
         self.emit('status', f'Game crashed — restart {self.restarts}/{limit} in {delay}s. F7 cancels.')
         self.emit('log', f'Crash recovery {self.restarts}/{limit}: {exc}')
         self.pause(delay)
-        self.check()
-        self.check_sync()
+        current = self._current_identity()
+        if current and expected_identity and tuple(current) != tuple(expected_identity):
+            return self._verify_replacement(nav)
+        self._crash_cleanup_gate(expected_identity, crash_confirmed=crash_confirmed)
         current = self._current_identity()
         if current and current == expected_identity:
-            self.check()
-            self.check_sync()
+            self._crash_cleanup_gate(expected_identity, crash_confirmed=crash_confirmed)
             if self.game.terminate_crashed(expected_identity):
                 self._timing_event('termination_sent')
         deadline = self.clock()+15
         while True:
             self.check()
-            self.check_sync()
+            if self.display_guard:
+                self.display_guard.check()
+            if self.sync_guard and self.sync_guard.visible() is True:
+                self.sync_guard.block('Gaming UI / cloud dialog is open')
+                raise SyncPending('A cloud-sync dialog appeared during crash cleanup')
             current = self._current_identity()
             if not current:
                 break
             if current != expected_identity:
                 return self._verify_replacement(nav)
+            self._crash_cleanup_gate(expected_identity, crash_confirmed=crash_confirmed)
             if self.clock() >= deadline:
                 raise RuntimeError('Crashed game did not exit; no duplicate launch sent')
             self.pause(.2)
         self._timing_event('process_exited')
         self.ensure(nav)
 
+    def _crash_cleanup_gate(self, expected_identity, *, crash_confirmed=False):
+        """Permit only exact-process crash cleanup through a stale sync hold.
+
+        A confirmed FH6 crash window is not a cloud-save choice. It may be
+        closed only for the process whose identity was captured with the crash;
+        any live Gaming UI/cloud window still blocks cleanup and launch.
+        """
+        self.check()
+        if self.display_guard:
+            self.display_guard.check()
+        if self.sync_guard and self.sync_guard.visible() is True:
+            self.sync_guard.block('Gaming UI / cloud dialog is open')
+            raise SyncPending('Resolve cloud-sync UI before crash cleanup')
+        current = self._current_identity()
+        if (expected_identity and current and tuple(current) == tuple(expected_identity)
+                and not (crash_confirmed or self.game.crashed())):
+            raise RuntimeError('The identified FH6 process no longer shows a confirmed crash; not terminating it')
+        if expected_identity and current and tuple(current) != tuple(expected_identity):
+            raise RuntimeError('FH6 process changed during crash cleanup; no termination sent')
+
     def ensure(self, nav, bring_to_front=False):
         self.check()
-        self.check_sync()
         if not self.enabled:
+            self.check_sync()
             return
         pids = self.game.pids()
         if pids:
+            self.check_sync()
             self.observed_process = True
             if self.game.crashed():
                 raise GameCrashed('FH6 crash dialog detected')
@@ -379,13 +475,24 @@ class GameLifecycle:
                 self.pause(.5)
             # A healthy, already-open game retains the normal focus requirement.
             obs = nav.observe()
+            if (obs.screen == 'unknown' and
+                    not controller_disconnected_modal(obs.doc) and
+                    callable(getattr(nav.reader, 'refine_region', None))):
+                obs.doc = nav.reader.refine_region(obs.frame, obs.doc,
+                                                   (600, 450, 750, 180))
+                obs.doc = nav.reader.refine_region(obs.frame, obs.doc,
+                                                   (55, 955, 260, 100))
             if obs.screen=='unknown' and not startup_screen(obs.doc):
                 obs.doc=nav.reader.refine_region(obs.frame,obs.doc,(0,750,500,270))
-            if startup_screen(obs.doc) or (bring_to_front and obs.screen == 'unknown'):
+            if (startup_screen(obs.doc) or controller_disconnected_modal(obs.doc) or
+                    (bring_to_front and obs.screen == 'unknown')):
                 return self.wait_ready(nav, launched=False)
             return
         # A fresh launch may have followed a crash between worker runs. Reconcile
         # checkpoints even when no live exception was available to observe it.
+        # A stale sync gate must not prevent starting an absent game: no cloud
+        # dialog can be open without a game process. The new process is still
+        # forced through wait_ready/wait_sync before mission input is allowed.
         self.mark_recovery('Starting FH6 through Steam')
         self.emit('stage', 'game_start')
         self.emit('status', 'Opening Forza Horizon 6 through Steam — F7 cancels')
@@ -437,15 +544,37 @@ class GameLifecycle:
                 continue
             waiting_focus = False
             obs = nav.observe()
-            if nav.is_home(obs) or nav.is_roam(obs):
-                ready_count = ready_count + 1 if obs.screen == ready_screen else 1
-                ready_screen = obs.screen
+            if (obs.screen == 'unknown' and
+                    not controller_disconnected_modal(obs.doc) and
+                    callable(getattr(nav.reader, 'refine_region', None))):
+                obs.doc = nav.reader.refine_region(obs.frame, obs.doc,
+                                                   (600, 450, 750, 180))
+                obs.doc = nav.reader.refine_region(obs.frame, obs.doc,
+                                                   (55, 955, 260, 100))
+            # A durable checkpoint can legitimately resume inside a known game
+            # menu (for example Upgrades after an SP read).  Requiring only
+            # Home/free-roam here turns that healthy saved state into a five
+            # minute startup timeout and needless game restart.
+            from .farming import timer_visible, result_visible
+            reconnect_modal = controller_disconnected_modal(obs.doc)
+            known_playable = reconnect_modal or obs.screen in {
+                'collection_grid', 'garage_grid', 'mad_mike_mastery',
+                'car_mastery', 'journal', 'discover', 'upgrades',
+                'purchase_success', 'campaign', 'cars', 'home_tab',
+                'pause_menu',
+            } or timer_visible(obs.doc) or result_visible(obs.doc) or (
+                obs.doc.has('Job Summary', contains=True) and
+                obs.doc.has('Shift Stars', contains=True))
+            if nav.is_home(obs) or nav.is_roam(obs) or known_playable:
+                ready_label = 'controller_disconnected' if reconnect_modal else obs.screen
+                ready_count = ready_count + 1 if ready_label == ready_screen else 1
+                ready_screen = ready_label
                 if ready_count < 3:
                     self.pause(.5)
                     continue
                 if self.sync_guard:
                     self.sync_guard.native_startup_complete(launched, sent)
-                self._timing_event('ready', screen=obs.screen,
+                self._timing_event('ready', screen=ready_label,
                                    basis='three_stable_native_frames',
                                    sync_gate_checked=self.sync_guard is not None)
                 self._timing = None
@@ -486,17 +615,20 @@ class GameLifecycle:
         raise RuntimeError('Steam/game startup timed out. Check login, updates or unexpected dialogs; no launch retry sent.')
 
     def wait_sync(self, nav):
-        """Wait indefinitely without activation, keys, clicks, launch or kill.
+        """Wait indefinitely without menu keys, clicks, launch or kill.
 
         The stable native Start Game screen is the sole exception: selecting it
         initiates Xbox/cloud synchronization and cannot choose a cloud, offline,
         conflict or account-dialog option.  After that one input, disappearance
         alone is insufficient: require three stable observations of a playable
-        menu. Unknown/loading/login/offline dialogs remain blocked.
+        menu. When no sync window exists, the worker may restore focus to the
+        already-running game so that proof can be captured. Unknown/loading,
+        login and offline dialogs remain blocked.
         """
         guard = self.sync_guard
         guard.block('Waiting for synchronization and playable game')
-        stable, last, start_sent, wake_sent, unknown_stable = 0, None, False, False, 0
+        stable, last, start_sent, continue_sent, wake_sent, unknown_stable = (
+            0, None, False, False, False, 0)
         while True:
             self.check()
             if guard.observe_wait_identity(self.game.identity()):
@@ -512,6 +644,11 @@ class GameLifecycle:
                 continue
             if nav.title.casefold() not in core.foreground_title().casefold():
                 stable, last = 0, None
+                # Activation cannot select a cloud/account option. Without it,
+                # an already-ready game behind the control panel can wait here
+                # forever even though synchronization has completed.
+                if self.priority and self.game.pids():
+                    self.game.activate()
                 self.pause(.5)
                 continue
             obs = nav.observe_sync()
@@ -543,7 +680,44 @@ class GameLifecycle:
                     self.emit('log', 'Sync gate selected verified Start Game once to initiate synchronization.')
                     self.pause(.5)
                 continue
-            unknown_stable = unknown_stable+1 if start_sent and obs.screen == 'unknown' else 0
+            if native == 'continue' and not continue_sent:
+                stable = stable+1 if last == 'continue' else 1
+                last = 'continue'
+                if stable >= 2:
+                    # Continue completes the native startup flow after Start
+                    # Game, including when this worker attaches at Continue.
+                    # It cannot choose an offline/cloud conflict option; only
+                    # its exact focused label is accepted, then sync still
+                    # needs fresh playable UI from this process below.
+                    from .navigation import label_focused
+                    matches = obs.doc.find('Continue', (0,700,650,380), True)
+                    if len(matches) != 1 or not label_focused(obs.frame, matches[0]):
+                        stable = 0
+                        self.pause(.5)
+                        continue
+                    if self.display_guard:
+                        self.display_guard.check()
+                    if (nav.title.casefold() not in core.foreground_title().casefold() or
+                            guard.visible()):
+                        stable, last = 0, None
+                        self.pause(.5)
+                        continue
+                    import pyautogui
+                    nav.invalidate_ready()
+                    nav.probe('input', 'enter')
+                    pyautogui.keyDown('enter')
+                    try:
+                        self.pause(.06)
+                    finally:
+                        pyautogui.keyUp('enter')
+                    continue_sent = True
+                    stable, last = 0, None
+                    self.emit('log', 'Sync gate selected verified Continue once after Start Game; awaiting stable playable UI.')
+                    self.pause(.5)
+                continue
+            reconnect_modal = controller_disconnected_modal(obs.doc)
+            unknown_stable = (unknown_stable+1 if start_sent and
+                              obs.screen == 'unknown' and not reconnect_modal else 0)
             if unknown_stable >= 6 and not wake_sent and not guard.visible() and not sync_state(obs.doc):
                 # FH6 can finish loading into its idle garage camera with the
                 # Home tiles hidden. Shift only wakes that camera; it cannot
@@ -565,14 +739,21 @@ class GameLifecycle:
                     self.pause(.5)
                     continue
             from .farming import timer_visible, result_visible
-            good = not sync_state(obs.doc) and (startup_screen(obs.doc) == 'continue' or
+            playable = not sync_state(obs.doc) and (
+                reconnect_modal or
                 nav.is_home(obs) or nav.is_roam(obs) or timer_visible(obs.doc) or result_visible(obs.doc) or
-                obs.screen in {'collection_grid', 'garage_grid', 'mad_mike_mastery', 'car_mastery',
+                obs.screen in {'wheelspin_menu', 'wheelspin_reward', 'wheelspin_duplicate',
+                               'collection_grid', 'garage_grid', 'mad_mike_mastery', 'car_mastery',
                                'journal', 'discover', 'upgrades', 'purchase_success',
                                'purchase_offer_95000', 'autoshow_prompt', 'collection_detail',
-                               'recent_jump', 'sort_selection', 'manufacturers', 'car_action'})
-            stable = stable+1 if good and obs.screen == last else int(good)
-            last = obs.screen
+                               'recent_jump', 'sort_selection', 'manufacturers', 'car_action',
+                               'pause_menu'})
+            good = playable or (not sync_state(obs.doc) and startup_screen(obs.doc) == 'continue')
+            stable_label = 'controller_disconnected' if reconnect_modal else obs.screen
+            stable = stable+1 if good and stable_label == last else int(good)
+            last = stable_label
+            if stable >= 3 and playable and not guard.evidence:
+                guard.playable_ui_complete(self.game.identity(), stable_label)
             if stable >= 3 and guard.ready():
                 return
             self.pause(.5)

@@ -56,7 +56,10 @@ def main():
     files = tracked_paths()
     required = {"FH6 Auto.pyw", "Setup FH6 Auto.cmd", "Start FH6 Auto.cmd",
                 "fh6/controller.py", "fh6/wheelspin_catalog.py",
-                "requirements-lock-win-py312.txt", "VERSION", f"RELEASE-NOTES-{tag}.md"}
+                "fh6/delivery_route.py", "fh6/tokyo_delivery.py",
+                "fh6/tokyo_delivery_control.py", "docs/TOKYO_DELIVERY.md",
+                "requirements-controller.txt", "requirements-lock-win-py312.txt",
+                "VERSION", f"RELEASE-NOTES-{tag}.md"}
     names = {p.as_posix() for p in files}
     missing = sorted(required - names)
     if missing:

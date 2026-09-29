@@ -76,16 +76,53 @@ class SyncTests(unittest.TestCase):
         self.assertTrue(self.guard.path.exists())
         self.nav.key.assert_not_called()
 
-    def test_playable_menu_without_completion_stays_blocked(self):
-        def stop_after_wait(_):
-            self.now += 1
-            if self.now > 30:
-                self.running.clear()
-        self.life.sleep = stop_after_wait
+    def test_stable_playable_menu_for_current_process_releases_stale_sync_gate(self):
+        self.life.wait_sync(self.nav)
+        self.assertGreaterEqual(self.nav.observe_sync.call_count, 3)
+        self.assertFalse(self.guard.pending)
+        self.assertIn('stable playable', self.guard.evidence)
+        self.nav.key.assert_not_called()
+
+    def test_stable_pause_menu_for_current_process_releases_stale_sync_gate(self):
+        self.nav.observe_sync.side_effect = lambda:SimpleNamespace(screen='pause_menu',
+            doc=doc('MY HORIZON', 'CREATIVE HUB'))
+        self.life.wait_sync(self.nav)
+        self.assertGreaterEqual(self.nav.observe_sync.call_count, 3)
+        self.assertFalse(self.guard.pending)
+        self.assertIn('stable playable pause_menu', self.guard.evidence)
+        self.nav.key.assert_not_called()
+
+    def test_startup_continue_is_selected_once_before_sync_gate_accepts_game_menu(self):
+        continue_screen = SimpleNamespace(screen='continue', doc=doc('Continue', 'Options', 'Exit'), frame=object())
+        pause = SimpleNamespace(screen='pause_menu', doc=doc('MY HORIZON', 'CREATIVE HUB'), frame=object())
+        observations = [continue_screen, continue_screen, pause, pause, pause]
+        self.nav.observe_sync.side_effect = observations
+        with (
+                patch('fh6.navigation.label_focused', return_value=True),
+                patch('pyautogui.keyDown') as key_down,
+                patch('pyautogui.keyUp') as key_up):
+            self.life.wait_sync(self.nav)
+        self.assertEqual(key_down.call_args_list, [unittest.mock.call('enter')])
+        self.assertEqual(key_up.call_args_list, [unittest.mock.call('enter')])
+        self.assertIn('stable playable pause_menu', self.guard.evidence)
+        self.assertFalse(self.guard.pending)
+
+    def test_wait_restores_game_focus_when_no_sync_window_is_visible(self):
+        calls = {'count': 0}
+        def foreground():
+            calls['count'] += 1
+            return 'ChatGPT' if calls['count'] == 1 else 'Forza Horizon 6'
+        with patch('fh6.game_lifecycle.core.foreground_title', side_effect=foreground):
+            self.life.wait_sync(self.nav)
+        self.backend.activate.assert_called_once()
+        self.nav.key.assert_not_called()
+
+    def test_wait_does_not_activate_game_while_sync_window_is_visible(self):
+        self.windows = [123]
+        self.life.sleep = lambda _:self.running.clear()
         with self.assertRaises(core.MasteryStopped):
             self.life.wait_sync(self.nav)
-        self.assertTrue(self.guard.pending)
-        self.assertFalse(self.guard.ready())
+        self.backend.activate.assert_not_called()
 
     def test_sync_approval_is_bound_to_game_process_and_revoked_by_new_dialog(self):
         with self.assertRaises(SyncPending):
@@ -212,7 +249,12 @@ class SyncTests(unittest.TestCase):
         self.guard.observe_completion(doc('Sync complete'))
         self.assertFalse(self.guard.ready())
 
-    def test_live_wait_discards_old_process_completion_before_stable_new_game(self):
+    def test_playable_ui_proof_is_rejected_without_process_or_with_sync_window(self):
+        self.assertFalse(self.guard.playable_ui_complete([], 'cars'))
+        self.windows = [123]
+        self.assertFalse(self.guard.playable_ui_complete(['game:creation1'], 'cars'))
+
+    def test_live_wait_discards_old_completion_then_accepts_stable_new_playable_game(self):
         self.guard.windows = lambda:[123] if self.now < 1 else []
         self.backend.identity.side_effect = lambda:['game:creation1' if self.now < 1 else 'game:creation2']
         self.nav.observe_sync.side_effect = lambda:SimpleNamespace(screen='cars',
@@ -222,10 +264,9 @@ class SyncTests(unittest.TestCase):
             if self.now >= 5:
                 self.running.clear()
         self.life.sleep = stop_after_wait
-        with self.assertRaises(core.MasteryStopped):
-            self.life.wait_sync(self.nav)
-        self.assertTrue(self.guard.pending)
-        self.assertFalse(self.guard.saw_final_progress)
+        self.life.wait_sync(self.nav)
+        self.assertFalse(self.guard.pending)
+        self.assertIn('stable playable', self.guard.evidence)
         self.nav.key.assert_not_called()
         self.backend.activate.assert_not_called()
         self.backend.launch.assert_not_called()

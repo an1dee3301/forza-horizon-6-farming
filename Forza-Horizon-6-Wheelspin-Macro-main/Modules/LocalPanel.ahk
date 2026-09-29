@@ -1,7 +1,7 @@
 ﻿; Local control panel. All game recognition and inputs live in the Python worker.
 ; Closing this panel requests a stop; the worker also watches its parent's PID.
 class LocalPanel {
-    __New(testMode := false, wheelspinTrial := 0, previewMode := false) {
+    __New(testMode := false, wheelspinTrial := 0, previewMode := false, tokyoTarget := 0) {
         this.pid := 0
         this.watchdog := MissionWatchdog()
         this.channel := ""
@@ -9,6 +9,9 @@ class LocalPanel {
         this.lastPhase := ""
         this.pending := false
         this.goalPending := false
+        this.savedMode := ""
+        this.savedTokyoLimit := ""
+        this.inspectionReady := false
         this.savedCreditFloor := ""
         this.editingProfile := false
         this.shareCode := "155439962"
@@ -47,6 +50,7 @@ class LocalPanel {
         OnExit(ObjBindMethod(this, "Exiting"))
         SetTimer(this.timer, 250)
         this.wheelspinTrialPending := wheelspinTrial
+        this.tokyoTargetPending := tokyoTarget
         this.Launch("inspect")
         this.DiscordReports("--watch")
     }
@@ -81,7 +85,7 @@ class LocalPanel {
         this.tabs.UseTab(1)
         this.gui.SetFont("s10 cE6EAF2 Norm")
         this.gui.AddText("x244 y180 w173", "Run mode")
-        this.mode := this.gui.AddDropDownList("x432 y174 w508 Choose1", ["Earn saved Super Wheelspins", "Wheelspin Lab", "Full pipeline", "Buy only", "Mastery only", "Recognition only", "Farm SP only", "Return to collection", "Check farm setup", "Open game"])
+        this.mode := this.gui.AddDropDownList("x432 y174 w508 Choose1", ["Earn saved Super Wheelspins", "Wheelspin Lab", "Tokyo Delivery", "Full pipeline", "Buy only", "Mastery only", "Recognition only", "Farm SP only", "Return to collection", "Check farm setup", "Open game"])
         this.mode.OnEvent("Change", ObjBindMethod(this, "RefreshPlan"))
         this.quantityLabel := this.gui.AddText("x244 y235 w173", "Super Wheelspins")
         this.points := this.gui.AddEdit("x432 y228 w194 h32 Border Background1C2330 cFFFFFF Number", "10")
@@ -217,7 +221,8 @@ class LocalPanel {
         this.creditFloor.Enabled := goal && !this.pid
         this.cleanupPolicy.Enabled := goal && !this.pid
         lab := this.mode.Text = "Wheelspin Lab"
-        this.quantityLabel.Value := goal ? "Super Wheelspins" : lab ? "Spins to open" : "Current SP"
+        delivery := this.mode.Text = "Tokyo Delivery"
+        this.quantityLabel.Value := goal ? "Super Wheelspins" : lab ? "Spins to open" : delivery ? "Shifts to finish" : "Current SP"
         if lab {
             if !RegExMatch(this.points.Value, "^\d+$") || Integer(this.points.Value) < 1 || Integer(this.points.Value) > 10000 {
                 this.plan.Value := "Enter 1–10,000 Wheelspins to open and record."
@@ -225,6 +230,18 @@ class LocalPanel {
             }
             state := this.dryRun.Value ? "DRY RUN — duplicate action stops for review" : "AUTO ACTIONS — activation gate must be complete"
             this.plan.Value := this.points.Value " " this.spinType.Text " spins  •  every reward slot saved first`n" state
+            return
+        }
+        if delivery {
+            if this.goalPending {
+                this.plan.Value := "Finish the saved Super Wheelspin goal before starting Tokyo Delivery."
+                return
+            }
+            if !RegExMatch(this.points.Value, "^\d+$") || Integer(this.points.Value) < 1 || Integer(this.points.Value) > 10000 {
+                this.plan.Value := "Enter 1–10,000 Tokyo Delivery shifts to complete."
+                return
+            }
+            this.plan.Value := this.points.Value " completed shifts  •  F7 stops at any time`nEach shift counts only after its game result is verified."
             return
         }
         if goal {
@@ -289,6 +306,16 @@ class LocalPanel {
         this.status.Value := count "-Super Wheelspin run prepared. F6 starts; F7 stops."
     }
 
+    PrepareTokyoDelivery(count) {
+        if this.pid || count < 1 || count > 10000
+            return
+        this.mode.Choose("Tokyo Delivery")
+        this.points.Value := count
+        this.RefreshPlan()
+        this.tabs.Choose(1)
+        this.status.Value := count " Tokyo Delivery shifts selected. Starting through the saved worker checkpoint."
+    }
+
     Start(*) {
         if this.pid || this.closing || this.editingProfile
             return
@@ -311,6 +338,24 @@ class LocalPanel {
         if this.mode.Text = "Wheelspin Lab" && (!RegExMatch(this.points.Value, "^\d+$")
             || Integer(this.points.Value) < 1 || Integer(this.points.Value) > 10000) {
             this.status.Value := "Choose 1–10,000 Wheelspins for Wheelspin Lab."
+            return
+        }
+        if this.mode.Text = "Tokyo Delivery" && (!RegExMatch(this.points.Value, "^\d+$")
+            || Integer(this.points.Value) < 1 || Integer(this.points.Value) > 10000) {
+            this.status.Value := "Choose 1–10,000 Tokyo Delivery shifts."
+            return
+        }
+        if this.mode.Text = "Tokyo Delivery" && this.goalPending {
+            this.status.Value := "Finish the saved Super Wheelspin goal before Tokyo Delivery."
+            return
+        }
+        if this.mode.Text = "Tokyo Delivery" && this.pending && this.savedMode != "Tokyo Delivery" {
+            this.status.Value := "Finish the saved car before Tokyo Delivery."
+            return
+        }
+        if this.mode.Text = "Tokyo Delivery" && this.pending && this.savedTokyoLimit != ""
+            && this.points.Value != this.savedTokyoLimit {
+            this.status.Value := "Resume Tokyo Delivery with its saved shift target."
             return
         }
         if !this.pending && (this.mode.Text = "Full pipeline" || this.mode.Text = "Buy only") {
@@ -463,6 +508,26 @@ class LocalPanel {
                 this.wheelspinTrialPending := 0
                 this.PrepareWheelspinTrial(count)
             }
+            if this.action = "inspect" && this.tokyoTargetPending {
+                count := this.tokyoTargetPending
+                this.tokyoTargetPending := 0
+                if !this.inspectionReady {
+                    this.status.Value := "Startup inspection did not complete. Tokyo Delivery was not started."
+                    this.gui.Show()
+                } else if this.goalPending {
+                    this.status.Value := "A saved farming mission is pending. Tokyo Delivery was not started."
+                    this.gui.Show()
+                } else if this.pending && this.savedMode != "Tokyo Delivery" {
+                    this.status.Value := "A different saved mission is pending. Tokyo Delivery was not started."
+                    this.gui.Show()
+                } else if this.pending && this.savedTokyoLimit != "" && Integer(this.savedTokyoLimit) != count {
+                    this.status.Value := "Resume Tokyo Delivery with its saved shift target."
+                    this.gui.Show()
+                } else {
+                    this.PrepareTokyoDelivery(count)
+                    this.Start()
+                }
+            }
             if this.closing {
                 ExitApp()
                 return
@@ -482,6 +547,11 @@ class LocalPanel {
         this.lastPhase := get("phase", "")
         this.pending := get("pending", "0") = "1"
         this.goalPending := get("goal_pending", "0") = "1"
+        if this.action = "inspect" {
+            this.savedMode := get("saved_mode", "")
+            this.savedTokyoLimit := this.savedMode = "Tokyo Delivery" ? get("limit", "") : ""
+            this.inspectionReady := get("ok", "0") = "1"
+        }
         this.shareCode := get("share_code", this.shareCode)
         this.challengeSeconds := get("challenge_seconds", this.challengeSeconds)
         this.status.Value := get("message", "Waiting…")
@@ -498,7 +568,20 @@ class LocalPanel {
             else
                 this.runState.Value := this.action = "run" ? "RUNNING" : "CHECKING"
         }
-        if get("run_mode", "") = "Wheelspin Lab" {
+        if get("run_mode", "") = "Tokyo Delivery" {
+            for index, label in ["SHIFTS DONE", "SHIFTS LEFT", "SHIFT TARGET", "RUN TIME"]
+                this.liveLabels[index].Value := label
+            for index, value in [get("completed", "0"), get("remaining", "—"), get("limit", "—"), get("elapsed", "—")]
+                this.liveValues[index].Value := value
+            this.inventorySummary.Value := "Tokyo City Food Delivery"
+            this.inventoryTimestamp.Value := "Completed shifts require a verified game result."
+            this.stats.Value := "TOKYO DELIVERY  " get("completed", "0") " / " get("limit", "—")
+                . "    REMAINING  " get("remaining", "—")
+                . "`n`nSTAGE  " get("stage", "Waiting")
+                . "`nPHASE  " get("phase", "—")
+                . "`n`nVERIFIED SHIFTS  " get("completed", "0")
+                . "`nACTIVE  " get("elapsed", "—") "    " get("window_left", "UNTIL SHIFTS / F7")
+        } else if get("run_mode", "") = "Wheelspin Lab" {
             for index, label in ["SUPER SPINS", "REWARD SLOTS", "CAR REWARDS", "CARS KEPT"]
                 this.liveLabels[index].Value := label
             for index, value in [get("lab_super_spins", "0"), get("lab_reward_slots", "0"), get("lab_car_rewards", "0"), get("lab_retained", "0")]
@@ -540,7 +623,8 @@ class LocalPanel {
         this.savedCreditPolicy.Value := this.savedCreditFloor != "" ? "Saved reserve: " this.savedCreditFloor " CR  •  " savedCleanup "`nBlank preserves this setting on resume." : "Optional reserve: blank keeps the saved setting. No reserve by default."
         if this.action != "run" {
             this.mode.Choose(get("saved_mode", "Earn saved Super Wheelspins"))
-            this.points.Value := this.mode.Text = "Earn saved Super Wheelspins" ? get("input_target", "10") : get("input_sp", "")
+            this.points.Value := this.mode.Text = "Earn saved Super Wheelspins" ? get("input_target", "10")
+                : this.mode.Text = "Wheelspin Lab" || this.mode.Text = "Tokyo Delivery" ? get("limit", get("input_sp", "")) : get("input_sp", "")
             this.reserve.Value := this.mode.Text = "Earn saved Super Wheelspins" ? get("goal_reserve", "0") : get("reserve", "0")
             this.monitor.Value := get("monitor", "1")
             this.timeout.Value := Round(get("timeout", "30"))
@@ -591,6 +675,7 @@ class LocalPanel {
 
     Stop(*) {
         this.watchdog.Stop()
+        this.tokyoTargetPending := 0
         if this.pid && this.channel != "" {
             try FileAppend("stop", this.channel "\stop", "UTF-8")
             this.runState.Value := "STOPPING"
@@ -772,6 +857,25 @@ class LocalPanel {
         this.SetBusy(false)
         if this.runState.Value != "COMPLETE"
             throw Error("Finished worker badge did not show complete")
+        this.pending := false
+        this.goalPending := false
+        this.mode.Choose("Tokyo Delivery")
+        this.points.Value := "3"
+        this.RefreshPlan()
+        if !InStr(this.plan.Value, "3 completed shifts")
+            throw Error("Tokyo Delivery target preview failed")
+        this.action := "inspect"
+        this.Apply(Map("run_mode", "Tokyo Delivery", "saved_mode", "Tokyo Delivery",
+            "pending", "1", "completed", "1", "limit", "3", "remaining", "2",
+            "phase", "active", "stage", "Tokyo Delivery — drive the route", "elapsed", "0:12", "ok", "1"))
+        if !InStr(this.stats.Value, "1 / 3") || this.liveLabels[1].Value != "SHIFTS DONE"
+            || this.liveValues[2].Value != "2" || this.points.Value != "3"
+            || !this.inspectionReady || this.savedTokyoLimit != "3"
+            throw Error("Tokyo Delivery checkpoint display failed")
+        this.pending := false
+        this.PrepareTokyoDelivery(2)
+        if this.mode.Text != "Tokyo Delivery" || this.points.Value != "2"
+            throw Error("Tokyo Delivery startup target failed")
         FileAppend("AHK panel checks passed. No game inputs sent.`n", "*")
         this.gui.Destroy()
         ExitApp(0)

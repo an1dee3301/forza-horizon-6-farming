@@ -15,15 +15,20 @@ REQUIRED_FILES = (
     "Forza-Horizon-6-Wheelspin-Macro-main/Modules/MissionWatchdog.ahk",
     "Forza-Horizon-6-Wheelspin-Macro-main/Runtime/bridge.py",
     "fh6/controller.py",
+    "fh6/delivery_route.py",
+    "fh6/tokyo_delivery.py",
+    "fh6/tokyo_delivery_control.py",
     "fh6/wheelspin_catalog.py",
     "recognition/current_car_glyph.png",
     "calibration/entry_cinematic.npz",
     "requirements-lock-win-py312.txt",
+    "requirements-controller.txt",
     "VERSION",
 )
 IMPORTS = (
     "cv2", "numpy", "mss", "keyboard", "pyautogui", "PIL",
-    "matplotlib", "winrt.windows.media.ocr", "windows_capture",
+    "matplotlib", "winrt.windows.media.ocr", "windows_capture", "vgamepad",
+    "fh6.tokyo_delivery",
 )
 
 

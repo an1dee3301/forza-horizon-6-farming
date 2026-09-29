@@ -62,6 +62,7 @@ The goal counter and farm records differ by one; the report documents that gap. 
 - Forza Horizon 6 through Steam, English menus, 1920×1080.
 - Fully upgraded 1998 Subaru Impreza 22B with completed mastery, configured as the farm Favorite.
 - Mega Farm V6 share code **155 439 962**.
+- Tokyo Delivery mode also requires the ViGEmBus virtual-controller driver. Setup installs the pinned `vgamepad` Python package.
 
 ### Install and run
 
@@ -100,6 +101,12 @@ Source installs use the same setup file. See the [desktop UI guide](docs/DESKTOP
 
 Purchases and rewards are checkpointed to avoid replay. The separate Wheelspin Lab opens saved spins.
 
+### Tokyo City Food Delivery
+
+Choose **Tokyo Delivery** in the same Mission view, enter a shift target, and press **F6**. The mode uses the existing worker and a guarded virtual Xbox controller to enable the game's ANNA Auto Drive, then verifies native route progress and the result. It saves its own shift checkpoint, releases driving input on uncertain or missing evidence, and counts a shift only after a positive native result is verified. **F7** releases the controller and stops the worker. You can also start a target with `Main.ahk --tokyo-delivery N` after setup.
+
+The route automation has portable offline tests and bounded recovery; unattended completion still needs live validation across route and parking variants. See the [Tokyo Delivery guide](docs/TOKYO_DELIVERY.md) for setup, recovery, and current limits.
+
 ### Protection and reporting
 
 - Keep-list rules protect both owned Subaru 22Bs and configured cars.
@@ -121,7 +128,7 @@ See [analysis commands and methodology](docs/latest-operation/REPORT.md), [chart
 | :--- | :--- |
 | `FH6 Auto.pyw` | Desktop entry point |
 | `Forza-Horizon-6-Wheelspin-Macro-main/Modules/LocalPanel.ahk` | Dashboard |
-| `fh6/` | Farming, navigation, accounting, analytics, reporting |
+| `fh6/` | Farming, navigation, Tokyo Delivery, accounting, analytics, reporting |
 | `tests/` | Regression suite |
 | `data/latest-operation/` | Sanitized normalized tables |
 | `tools/analyze_operation.py` | Reproducible analysis and charts |

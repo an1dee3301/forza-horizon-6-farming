@@ -1,0 +1,3 @@
+# Optional Tokyo City Food Delivery virtual-controller backend.
+# ViGEmBus must already be installed and healthy on Windows.
+vgamepad==0.1.0

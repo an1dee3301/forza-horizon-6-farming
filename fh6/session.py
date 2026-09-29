@@ -1,6 +1,8 @@
 """Durable cycle checkpoints. A partially completed cycle cannot become a new buy."""
 import json
+import os
 import time
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -8,7 +10,50 @@ from forza_cycle import BASE
 from .budget import plan_from_sp
 
 
-def replace_checkpoint(temporary, destination):
+class CheckpointCorrupt(RuntimeError):
+    """A saved checkpoint cannot be trusted or resumed automatically."""
+
+
+def _backup_path(path):
+    return path.with_name(path.name + '.bak')
+
+
+def _json_object(raw):
+    value = json.loads(raw.decode('utf-8'))
+    if not isinstance(value, dict):
+        raise ValueError('Checkpoint must contain a JSON object')
+    return value
+
+
+def load_checkpoint(path, *, required_fields=()):
+    """Load the current checkpoint; never silently roll back to a backup."""
+    path = Path(path)
+    backup = _backup_path(path)
+    try:
+        current = _json_object(path.read_bytes())
+        if current and any(field not in current for field in required_fields):
+            raise ValueError('Checkpoint is missing required fields')
+        if not current and backup.exists() and _json_object(backup.read_bytes()):
+            raise ValueError('Empty checkpoint conflicts with recovery copy')
+        return current
+    except FileNotFoundError:
+        if not backup.exists():
+            return {}
+        reason = 'missing'
+    except (OSError, UnicodeError, ValueError):
+        reason = 'invalid or empty'
+    try:
+        previous = _json_object(backup.read_bytes())
+        if previous and any(field not in previous for field in required_fields):
+            raise ValueError('Recovery copy is missing required fields')
+    except (OSError, UnicodeError, ValueError):
+        detail = 'No valid recovery copy is available.'
+    else:
+        detail = f'A previous valid copy is available at {backup}. Reconcile it with the game before restoring.'
+    raise CheckpointCorrupt(f'Saved checkpoint {path} is {reason}. {detail}')
+
+
+def _replace_with_retry(temporary, destination):
     """A Windows reader may briefly deny replacement; retry the same bytes only."""
     for attempt in range(21):
         try:
@@ -18,6 +63,44 @@ def replace_checkpoint(temporary, destination):
             if attempt == 20:
                 raise
             time.sleep(.025)
+
+
+def _write_backup(destination, raw):
+    backup = _backup_path(destination)
+    temporary = backup.with_name(backup.name + f'.{os.getpid()}.{uuid.uuid4().hex}.tmp')
+    with temporary.open('wb') as stream:
+        stream.write(raw)
+        stream.flush()
+        os.fsync(stream.fileno())
+    _replace_with_retry(temporary, backup)
+
+
+def replace_checkpoint(temporary, destination, *, keep_backup=False):
+    """Flush new bytes, optionally retain a valid copy, then replace atomically."""
+    temporary, destination = Path(temporary), Path(destination)
+    if keep_backup:
+        with temporary.open('r+b') as stream:
+            stream.flush()
+            os.fsync(stream.fileno())
+        incoming = temporary.read_bytes()
+        _json_object(incoming)
+        try:
+            previous = destination.read_bytes()
+        except FileNotFoundError:
+            if _backup_path(destination).exists():
+                raise CheckpointCorrupt(
+                    f'Saved checkpoint {destination} is missing while a recovery copy exists. '
+                    'Reconcile the game before restoring it.')
+            previous = incoming
+        else:
+            try:
+                _json_object(previous)
+            except (UnicodeError, ValueError) as exc:
+                raise CheckpointCorrupt(
+                    f'Saved checkpoint {destination} is invalid. '
+                    'Reconcile the game before replacing it.') from exc
+        _write_backup(destination, previous)
+    _replace_with_retry(temporary, destination)
 
 
 class Session:
